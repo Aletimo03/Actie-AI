@@ -66,6 +66,9 @@ class Node:
     annex: str = ""  # roman numeral for annex nodes, e.g. "III"
     source: str = ""  # CELEX of the document the text comes from
     amended: bool = False
+    # Reading order of the node's own text and its children: ["t", "text"] or ["c", child id].
+    # Needed because text can follow a list ("Notwithstanding the first subparagraph ...").
+    parts: list[list[str]] = field(default_factory=list)
     children: list["Node"] = field(default_factory=list, repr=False)
 
 
@@ -101,8 +104,11 @@ class ArticleParser:
     # -- helpers ---------------------------------------------------------
 
     def add(self, node: Node, parent: Node | None) -> Node:
+        if node.text and not node.parts:  # text given at creation, e.g. "3.1. The application ..."
+            node.parts.append(["t", node.text])
         if parent is not None:
             parent.children.append(node)
+            parent.parts.append(["c", node.id])
         self.nodes.append(node)
         return node
 
@@ -117,6 +123,7 @@ class ArticleParser:
         text = clean(text)
         if text and not DELETED.match(text):
             node.text = f"{node.text}\n{text}" if node.text else text
+            node.parts.append(["t", text])
             if node.children:
                 self.subparagraph[node.id] = self.subparagraph.get(node.id, 1) + 1
 
@@ -291,7 +298,7 @@ class ArticleParser:
                 text="",
                 parent_id=parent.id,
                 path=parent.path + [label],
-                title=(match.group(3) or "").lstrip("—– "),  # "Section A — Information ..."
+                title=(match.group(3) or "").lstrip("—–- "),  # "Section A — Information ..."
                 annex=annex.annex,
                 amended=self.amended,
             ),

@@ -133,3 +133,11 @@ def test_real_consolidated_text():
     text = {n.id: n.text for n in by_lang["en"]}
     assert "emotions" in text["en_art5_p1_f"]
     assert "narrow procedural task" in text["en_art6_p3_a"]
+
+
+def test_reading_order_of_text_and_points(nodes):
+    parts = nodes["en_art6_p3"].parts
+    assert parts[0] == ["t", "By derogation from paragraph 2, not high-risk where:"]
+    assert parts[1:3] == [["c", "en_art6_p3_a"], ["c", "en_art6_p3_b"]]
+    assert parts[3] == ["t", "Profiling is always high-risk."]  # after the list, as in the law
+    assert parts[4] == ["c", "en_art6_p3_s2_a"]
