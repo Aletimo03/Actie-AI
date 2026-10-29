@@ -20,6 +20,7 @@ import httpx
 import psycopg
 from pgvector.psycopg import register_vector
 
+from backend.app.retrieval.keyword import keyword_search
 from backend.app.retrieval.vector import vector_search
 from ingestion.embed import OllamaEmbedder
 
@@ -90,6 +91,7 @@ def main() -> None:
         embedder = OllamaEmbedder(client)
         methods: dict[str, Search] = {
             "vector": lambda q, lang, k: [h.id for h in vector_search(conn, embedder, q, lang, k)],
+            "keyword (BM25)": lambda q, lang, k: [h.id for h in keyword_search(conn, q, lang, k)],
         }
         print(f"{len(cases)} cases\n")
         print(report([score(name, search, cases) for name, search in methods.items()]))
