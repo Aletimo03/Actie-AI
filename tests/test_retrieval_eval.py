@@ -16,7 +16,7 @@ def test_recall_and_mrr():
     cases = [Case("q1", "en", ["a"]), Case("q2", "en", ["b"]), Case("q3", "en", ["z"])]
     answers = {"q1": ["a", "x"], "q2": ["x"] * 6 + ["b"], "q3": ["x"]}
     result = score("fake", lambda q, lang, k: answers[q], cases)
-    assert result.recall == {5: 1 / 3, 10: 2 / 3}  # q1 at rank 1, q2 at rank 7, q3 missing
+    assert result.recall == {5: 1 / 3, 10: 2 / 3, 20: 2 / 3}  # q1 rank 1, q2 rank 7
     assert result.mrr == pytest.approx((1 + 1 / 7) / 3)
     assert [case.query for case, _ in result.misses] == ["q2", "q3"]
 

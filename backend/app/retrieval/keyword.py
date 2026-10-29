@@ -9,18 +9,20 @@ context header, so those words drowned the useful ones ("emot" is in 11 of
     score = sum over query lexemes of  idf * tf * (k1 + 1) / (tf + k1 * (1 - b + b * len / avglen))
     idf   = ln(1 + (N - df + 0.5) / (df + 0.5))
 
-tf is how often the lexeme occurs in the chunk, len the chunk's lexeme count.
+tf is how often the lexeme occurs in the chunk, len the chunk's lexeme count. N, df
+and avglen are computed over the chunks in scope.
 """
 
 import psycopg
 
-from backend.app.retrieval.vector import CURRENT_VERSION, Hit
+from backend.app.retrieval.scope import Scope
+from backend.app.retrieval.vector import Hit
 
 CONFIG = {"en": "english", "it": "italian"}
 K1 = 1.2  # how quickly repeated occurrences stop adding score (the usual default)
 B = 0.75  # how much long chunks are penalised (the usual default)
 
-BM25_SQL = f"""
+BM25_SQL = """
 WITH q AS (
     SELECT DISTINCT lexeme
     FROM unnest(tsvector_to_array(to_tsvector(%(config)s::regconfig, %(query)s))) AS lexeme
@@ -28,7 +30,7 @@ WITH q AS (
 docs AS (
     SELECT id, header, text, context_id, tsv, length(tsv) AS len
     FROM chunks
-    WHERE version = {CURRENT_VERSION} AND lang = %(lang)s
+    WHERE {where}
 ),
 corpus AS (SELECT count(*) AS n, avg(len) AS avglen FROM docs),
 tf AS (
@@ -52,6 +54,7 @@ LIMIT %(k)s
 """
 
 
-def keyword_search(conn: psycopg.Connection, query: str, lang: str, k: int = 10) -> list[Hit]:
-    params = {"config": CONFIG[lang], "query": query, "lang": lang, "k": k, "k1": K1, "b": B}
-    return [Hit(*row) for row in conn.execute(BM25_SQL, params).fetchall()]
+def keyword_search(conn: psycopg.Connection, query: str, scope: Scope, k: int = 10) -> list[Hit]:
+    where, params = scope.where()
+    params |= {"config": CONFIG[scope.lang], "query": query, "k": k, "k1": K1, "b": B}
+    return [Hit(*row) for row in conn.execute(BM25_SQL.format(where=where), params).fetchall()]

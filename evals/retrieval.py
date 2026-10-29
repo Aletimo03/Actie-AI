@@ -5,7 +5,8 @@ art5_p1_c_ii answers a question about art5_p1_c. Broader results do not match:
 the whole of art5_p1 does not answer a question about point (f).
 
 recall@k: share of cases with at least one expected chunk in the top k.
-MRR: mean of 1 / rank of the first expected chunk (0 when none is in the top 10).
+MRR: mean of 1 / rank of the first expected chunk (0 when none is in the top 20).
+recall@20 is what a re-ranker can work with: it only reorders the candidates it gets.
 
     uv run --env-file .env python -m evals.retrieval
 """
@@ -20,12 +21,14 @@ import httpx
 import psycopg
 from pgvector.psycopg import register_vector
 
+from backend.app.retrieval.hybrid import hybrid_search
 from backend.app.retrieval.keyword import keyword_search
+from backend.app.retrieval.scope import Scope
 from backend.app.retrieval.vector import vector_search
 from ingestion.embed import OllamaEmbedder
 
 CASES = Path(__file__).with_name("retrieval_cases.toml")
-DEPTH = 10  # results fetched per query; recall@5 and @10 and MRR are computed on these
+DEPTH = 20  # results fetched per query; recall@5, @10, @20 and MRR are computed on these
 
 Search = Callable[[str, str, int], list[str]]  # (query, lang, k) -> chunk ids, best first
 
@@ -59,7 +62,9 @@ def first_rank(expected: list[str], results: list[str]) -> int | None:
     return next((i for i, r in enumerate(results, 1) if any(matches(r, e) for e in expected)), None)
 
 
-def score(method: str, search: Search, cases: list[Case], ks: tuple[int, ...] = (5, 10)) -> Score:
+def score(
+    method: str, search: Search, cases: list[Case], ks: tuple[int, ...] = (5, 10, 20)
+) -> Score:
     ranks, misses = [], []
     for case in cases:
         results = search(case.query, case.lang, DEPTH)
@@ -73,9 +78,10 @@ def score(method: str, search: Search, cases: list[Case], ks: tuple[int, ...] = 
 
 
 def report(scores: list[Score]) -> str:
-    lines = [f"{'method':<20}{'recall@5':>10}{'recall@10':>11}{'MRR':>7}"]
+    lines = [f"{'method':<22}{'recall@5':>10}{'recall@10':>11}{'recall@20':>11}{'MRR':>7}"]
     lines += [
-        f"{s.method:<20}{s.recall[5]:>10.2f}{s.recall[10]:>11.2f}{s.mrr:>7.2f}" for s in scores
+        f"{s.method:<22}{s.recall[5]:>10.2f}{s.recall[10]:>11.2f}{s.recall[20]:>11.2f}{s.mrr:>7.2f}"
+        for s in scores
     ]
     for s in scores:
         lines.append(f"\n{s.method}: {len(s.misses)} cases without an expected chunk in the top 5")
@@ -84,14 +90,24 @@ def report(scores: list[Score]) -> str:
     return "\n".join(lines)
 
 
+def ids(hits) -> list[str]:
+    return [h.id for h in hits]
+
+
 def main() -> None:
     cases = load_cases()
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn, httpx.Client(timeout=60) as client:
         register_vector(conn)
         embedder = OllamaEmbedder(client)
         methods: dict[str, Search] = {
-            "vector": lambda q, lang, k: [h.id for h in vector_search(conn, embedder, q, lang, k)],
-            "keyword (BM25)": lambda q, lang, k: [h.id for h in keyword_search(conn, q, lang, k)],
+            "vector": lambda q, lang, k: ids(vector_search(conn, embedder, q, Scope(lang), k)),
+            "keyword (BM25)": lambda q, lang, k: ids(keyword_search(conn, q, Scope(lang), k)),
+            "hybrid (RRF)": lambda q, lang, k: ids(
+                hybrid_search(conn, embedder, q, Scope(lang), k)
+            ),
+            "hybrid, binding only": lambda q, lang, k: ids(
+                hybrid_search(conn, embedder, q, Scope(lang, binding_only=True), k)
+            ),
         }
         print(f"{len(cases)} cases\n")
         print(report([score(name, search, cases) for name, search in methods.items()]))
