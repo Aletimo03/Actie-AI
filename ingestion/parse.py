@@ -13,16 +13,29 @@ numbered paragraphs ("3.1. ..."), headings ("Section A", "1. Introduction")
 and tables. Headings become annex_section nodes; lettered points that follow
 a plain numbered paragraph belong to it (Annex VII 3.1 (a)-(f)).
 
+Recitals exist only in the original 2024 text (consolidations omit them):
+<div id="rct_58"> holds a two-cell table, the number and the text.
+
 <p class="modref"> markers show amendments: "▼M1" starts text changed by
 the first amending act, "▼B" returns to the basic 2024 text. Nodes inside
 an amended stretch get amended=True; the markers never reach the text.
 """
 
+import argparse
+import json
 import re
-from dataclasses import dataclass, field
+import warnings
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Tag, XMLParsedAsHTMLWarning
+
+# The files are XHTML; the lxml HTML parser reads them fine and is lenient.
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
+RAW_DIR = Path("data/raw")
+PROCESSED_DIR = Path("data/processed")
+BASE_CELEX = "32024R1689"
 
 DELETED = re.compile(r"^[—–-]{3,}$")  # "—————" stands for text repealed by an amendment
 
@@ -51,6 +64,7 @@ class Node:
     chapter: str = ""  # roman numeral, e.g. "III"
     section: str = ""  # e.g. "1", empty when the chapter has no sections
     annex: str = ""  # roman numeral for annex nodes, e.g. "III"
+    source: str = ""  # CELEX of the document the text comes from
     amended: bool = False
     children: list["Node"] = field(default_factory=list, repr=False)
 
@@ -328,6 +342,81 @@ def parse_annexes(html: str, lang: str) -> list[Node]:
     return parser.nodes
 
 
+RECITAL_WORD = {"en": "Recital", "it": "Considerando"}
+
+
+def parse_recitals(html: str, lang: str) -> list[Node]:
+    """One node per recital of the original text. Recitals explain; they do not bind."""
+    soup = BeautifulSoup(html, "lxml")
+    nodes = []
+    for div in soup.find_all("div", class_="eli-subdivision", id=re.compile(r"^rct_\d+$")):
+        for note in div.select("a[id^=ntc]"):  # footnote markers: <a>(<span>5</span>)</a>
+            note.decompose()
+        cells = div.find_all("td")
+        number = div["id"].removeprefix("rct_")
+        label = f"{RECITAL_WORD[lang]} {number}"
+        nodes.append(
+            Node(
+                id=f"{lang}_rec{number}",
+                kind="recital",
+                label=label,
+                text=clean(cells[-1].get_text(" ")) if cells else clean(div.get_text(" ")),
+                parent_id=None,
+                path=[label],
+            )
+        )
+    return nodes
+
+
 def parse_file(path: Path, lang: str) -> list[Node]:
     html = path.read_text(encoding="utf-8")
     return parse_articles(html, lang) + parse_annexes(html, lang)
+
+
+def latest_consolidated(raw_dir: Path = RAW_DIR) -> str:
+    versions = sorted(p.name for p in raw_dir.glob("02024R1689-*") if p.is_dir())
+    if not versions:
+        raise SystemExit("no consolidated text in data/raw: run `python -m ingestion.fetch` first")
+    return versions[-1]  # the date suffix sorts chronologically
+
+
+def parse_language(lang: str, consolidated: str, raw_dir: Path = RAW_DIR) -> list[Node]:
+    """Articles and annexes from the consolidated text, recitals from the original."""
+    current = parse_file(raw_dir / consolidated / f"{lang}.html", lang)
+    original = raw_dir / BASE_CELEX / f"{lang}.html"
+    recitals = parse_recitals(original.read_text(encoding="utf-8"), lang)
+    for node in current:
+        node.source = consolidated
+    for node in recitals:
+        node.source = BASE_CELEX
+    return current + recitals
+
+
+def write_jsonl(nodes: list[Node], path: Path) -> None:
+    """One node per line, without the in-memory children list (parent_id links them)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as out:
+        for node in nodes:
+            row = asdict(node)
+            del row["children"]
+            out.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Parse the fetched AI Act into jsonl nodes.")
+    parser.add_argument("--lang", nargs="+", default=["en", "it"], choices=["en", "it"])
+    args = parser.parse_args()
+
+    consolidated = latest_consolidated()
+    for lang in args.lang:
+        nodes = parse_language(lang, consolidated)
+        path = PROCESSED_DIR / consolidated / f"{lang}.jsonl"
+        write_jsonl(nodes, path)
+        counts = {}
+        for node in nodes:
+            counts[node.kind] = counts.get(node.kind, 0) + 1
+        print(f"{lang}: {len(nodes)} nodes {counts} -> {path}")
+
+
+if __name__ == "__main__":
+    main()

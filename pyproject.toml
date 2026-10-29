@@ -17,6 +17,7 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = ["ignore::bs4.XMLParsedAsHTMLWarning"]  # pytest resets module filters
 
 [tool.ruff]
 line-length = 100
