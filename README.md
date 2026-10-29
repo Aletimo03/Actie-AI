@@ -30,8 +30,26 @@ Requirements: [uv](https://docs.astral.sh/uv/), Docker, [Ollama](https://ollama.
 cp .env.example .env          # then set a real password (POSTGRES_PASSWORD and DATABASE_URL)
 uv sync                       # create .venv and install dependencies
 docker compose up -d          # start Postgres + pgvector
-uv run pytest                 # run the tests
+ollama pull bge-m3            # embedding model, ~1.2 GB
+uv run --env-file .env pytest # run the tests (database tests need the compose stack)
 ```
+
+## Ingestion pipeline
+
+Each stage reads the previous stage's files and can be re-run on its own.
+
+```bash
+uv run python -m ingestion.fetch      # newest consolidated text + 2024 original, en and it
+uv run python -m ingestion.parse      # articles, paragraphs, points, annexes, recitals
+uv run python -m ingestion.chunk      # search chunks with context headers + context units
+uv run python -m ingestion.validate   # gate: counts, en/it twins, refs, sizes, spot checks
+uv run python -m ingestion.embed      # bge-m3 vectors via Ollama, cached by content hash
+uv run --env-file .env python -m ingestion.load   # one transaction into Postgres
+```
+
+On the consolidated text of 27 July 2026 this gives 1,505 search chunks and
+1,023 context units per language. Embedding takes about 3 minutes on an
+M-series Mac the first time and about a second on re-runs.
 
 ## Project layout
 
