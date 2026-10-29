@@ -1,0 +1,147 @@
+# Retrieval test set: questions as a user would write them, and the chunks that
+# answer them. A case is a hit at k if ANY expected id is in the top k results.
+# Ids are chunk ids (see data/processed/<version>/chunks_<lang>.jsonl).
+
+# --- High-risk use cases (Annex III) ---------------------------------------
+
+[[case]]
+query = "A tool that reads résumés and shortlists the best applicants for an interview."
+lang = "en"
+expected = ["en_annex3_4_a"]
+
+[[case]]
+query = "Our software ranks people who apply for jobs at our company."
+lang = "en"
+expected = ["en_annex3_4_a"]
+
+[[case]]
+query = "Un sistema che scarta automaticamente i curriculum meno adatti."
+lang = "it"
+expected = ["it_annex3_4_a"]
+note = "'curriculum' is ambiguous in Italian: CV or school curriculum. Failed in the first vector search."
+
+[[case]]
+query = "an app that decides who gets a loan"
+lang = "en"
+expected = ["en_annex3_5_b"]
+
+[[case]]
+query = "Un'app che decide a chi concedere un prestito"
+lang = "it"
+expected = ["it_annex3_5_b"]
+
+[[case]]
+query = "An AI assistant that tells hospital patients how urgently they need to be seen"
+lang = "en"
+expected = ["en_annex3_5_d"]
+
+[[case]]
+query = "Face recognition to identify people from CCTV footage"
+lang = "en"
+expected = ["en_annex3_1_a", "en_art5_p1_h"]
+
+[[case]]
+query = "AI-powered medical device software for diagnosis"
+lang = "en"
+expected = ["en_annex1_seca_11", "en_annex1_seca_12", "en_art6_p1"]
+
+# --- Prohibited practices (Article 5) ---------------------------------------
+
+[[case]]
+query = "detecting students' emotions with a webcam during lessons"
+lang = "en"
+expected = ["en_art5_p1_f"]
+note = "Failed in the first vector search: recitals 18 and 44 ranked above the ban."
+
+[[case]]
+query = "Riconoscere le emozioni dei dipendenti in ufficio"
+lang = "it"
+expected = ["it_art5_p1_f"]
+
+[[case]]
+query = "Rating citizens on their social behaviour to decide access to public services"
+lang = "en"
+expected = ["en_art5_p1_c"]
+
+[[case]]
+query = "An app that creates fake nude images of real people"
+lang = "en"
+expected = ["en_art5_p1_ba"]
+note = "Prohibition added by the Digital Omnibus (Regulation 2026/1744)."
+
+[[case]]
+query = "Scraping faces from the internet to build a facial recognition database"
+lang = "en"
+expected = ["en_art5_p1_e"]
+
+[[case]]
+query = "Predicting whether a person will commit a crime based on their personality"
+lang = "en"
+expected = ["en_art5_p1_d"]
+
+# --- Transparency (Article 50) ----------------------------------------------
+
+[[case]]
+query = "Do I have to tell customers they are talking to a chatbot?"
+lang = "en"
+expected = ["en_art50_p1"]
+
+[[case]]
+query = "Devo dire agli utenti che stanno parlando con un chatbot?"
+lang = "it"
+expected = ["it_art50_p1"]
+
+[[case]]
+query = "Must AI-generated images be watermarked or labelled?"
+lang = "en"
+expected = ["en_art50_p2", "en_art50_p4"]
+
+# --- Obligations, roles, dates ----------------------------------------------
+
+[[case]]
+query = "when do the rules for high-risk AI systems listed in Annex III apply?"
+lang = "en"
+expected = ["en_art113_c_i"]
+note = "Failed in the first vector search. Date changed by the Digital Omnibus to 2 December 2027."
+
+[[case]]
+query = "Quando si applicano le regole sui sistemi ad alto rischio dell'allegato III?"
+lang = "it"
+expected = ["it_art113_c_i"]
+
+[[case]]
+query = "What does human oversight of a high-risk AI system require?"
+lang = "en"
+expected = ["en_art14_p1"]
+
+[[case]]
+query = "What fines apply for using a prohibited AI practice?"
+lang = "en"
+expected = ["en_art99_p3"]
+
+[[case]]
+query = "What must the technical documentation contain?"
+lang = "en"
+expected = ["en_annex4"]
+
+[[case]]
+query = "Obligations of companies that use a high-risk AI system made by someone else"
+lang = "en"
+expected = ["en_art26_p1"]
+
+[[case]]
+query = "What are the obligations of providers of general-purpose AI models?"
+lang = "en"
+expected = ["en_art53_p1"]
+
+# --- Exact references and definitions ---------------------------------------
+
+[[case]]
+query = "What does Article 6(3)(d) say?"
+lang = "en"
+expected = ["en_art6_p3_d"]
+
+[[case]]
+query = "What is the definition of an AI system?"
+lang = "en"
+expected = ["en_art3_1"]
