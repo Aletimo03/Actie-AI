@@ -51,6 +51,29 @@ On the consolidated text of 27 July 2026 this gives 1,505 search chunks and
 1,023 context units per language. Embedding takes about 3 minutes on an
 M-series Mac the first time and about a second on re-runs.
 
+## Retrieval
+
+`backend.app.retrieval.hybrid.search()` runs vector search (bge-m3, pgvector)
+and BM25 keyword search (Postgres full text), fuses them with reciprocal rank
+fusion, and re-ranks the top 30 with the `BAAI/bge-reranker-v2-m3`
+cross-encoder. Scores on the 26-question test set in
+[`evals/retrieval_cases.toml`](evals/retrieval_cases.toml) (English and Italian):
+
+| method | recall@5 | recall@10 | recall@20 | MRR |
+|---|---|---|---|---|
+| vector | 0.73 | 0.77 | 0.85 | 0.48 |
+| keyword (BM25) | 0.38 | 0.38 | 0.62 | 0.26 |
+| hybrid (RRF) | 0.54 | 0.85 | 0.92 | 0.41 |
+| hybrid, binding text only | 0.65 | 0.88 | 0.96 | 0.46 |
+| **hybrid + re-ranker** | **0.92** | **0.96** | **0.96** | **0.66** |
+
+```bash
+uv run --env-file .env python -m evals.retrieval
+```
+
+The re-ranker downloads about 2.3 GB on first use and takes about 3 s per
+question on an M-series GPU.
+
 ## Project layout
 
 ```
