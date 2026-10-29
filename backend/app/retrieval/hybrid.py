@@ -10,12 +10,14 @@ searches beats one ranked first by only one of them (Lecture 04).
 import psycopg
 
 from backend.app.retrieval.keyword import keyword_search
+from backend.app.retrieval.rerank import Reranker
 from backend.app.retrieval.scope import Scope
 from backend.app.retrieval.vector import Hit, vector_search
 from ingestion.embed import OllamaEmbedder
 
 K = 60  # the constant from the original RRF paper; larger values flatten the rank differences
 DEPTH = 20  # results taken from each search before fusing
+CANDIDATES = 30  # fused results the re-ranker reorders
 
 
 def rrf(result_lists: list[list[Hit]], k: int = K) -> list[Hit]:
@@ -44,3 +46,16 @@ def hybrid_search(
     vector_hits = vector_search(conn, embedder, query, scope, depth)
     keyword_hits = keyword_search(conn, query, scope, depth)
     return rrf([vector_hits, keyword_hits])[:k]
+
+
+def search(
+    conn: psycopg.Connection,
+    embedder: OllamaEmbedder,
+    reranker: Reranker,
+    query: str,
+    scope: Scope,
+    k: int = 6,
+    candidates: int = CANDIDATES,
+) -> list[Hit]:
+    """The full retrieval: hybrid search for candidates, then the cross-encoder picks the best k."""
+    return reranker.rerank(query, hybrid_search(conn, embedder, query, scope, candidates), k)

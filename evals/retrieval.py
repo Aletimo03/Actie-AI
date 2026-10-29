@@ -21,8 +21,9 @@ import httpx
 import psycopg
 from pgvector.psycopg import register_vector
 
-from backend.app.retrieval.hybrid import hybrid_search
+from backend.app.retrieval.hybrid import hybrid_search, search
 from backend.app.retrieval.keyword import keyword_search
+from backend.app.retrieval.rerank import Reranker
 from backend.app.retrieval.scope import Scope
 from backend.app.retrieval.vector import vector_search
 from ingestion.embed import OllamaEmbedder
@@ -99,6 +100,7 @@ def main() -> None:
     with psycopg.connect(os.environ["DATABASE_URL"]) as conn, httpx.Client(timeout=60) as client:
         register_vector(conn)
         embedder = OllamaEmbedder(client)
+        reranker = Reranker()
         methods: dict[str, Search] = {
             "vector": lambda q, lang, k: ids(vector_search(conn, embedder, q, Scope(lang), k)),
             "keyword (BM25)": lambda q, lang, k: ids(keyword_search(conn, q, Scope(lang), k)),
@@ -107,6 +109,9 @@ def main() -> None:
             ),
             "hybrid, binding only": lambda q, lang, k: ids(
                 hybrid_search(conn, embedder, q, Scope(lang, binding_only=True), k)
+            ),
+            "hybrid + rerank": lambda q, lang, k: ids(
+                search(conn, embedder, reranker, q, Scope(lang, binding_only=True), k)
             ),
         }
         print(f"{len(cases)} cases\n")
