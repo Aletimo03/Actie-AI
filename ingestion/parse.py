@@ -8,6 +8,11 @@ second. A paragraph's points are sometimes siblings of the paragraph rather
 than children, so blocks are read in document order and attach to the most
 recent paragraph.
 
+Annexes (<div id="anx_III">) mix four layouts: grid-list points, plain
+numbered paragraphs ("3.1. ..."), headings ("Section A", "1. Introduction")
+and tables. Headings become annex_section nodes; lettered points that follow
+a plain numbered paragraph belong to it (Annex VII 3.1 (a)-(f)).
+
 <p class="modref"> markers show amendments: "▼M1" starts text changed by
 the first amending act, "▼B" returns to the basic 2024 text. Nodes inside
 an amended stretch get amended=True; the markers never reach the text.
@@ -26,11 +31,18 @@ DELETED = re.compile(r"^[—–-]{3,}$")  # "—————" stands for text re
 LATIN_SUFFIXES = ["bis", "ter", "quater", "quinquies", "sexies", "septies", "octies", "novies"]
 LATIN = re.compile(r"\s*\b(" + "|".join(LATIN_SUFFIXES) + r")\b")
 
+# Annex headings: "Section A.", "Sezione 1", "1. Introduction", "a. AI systems subject to ..."
+ANNEX_HEADING = re.compile(
+    r"^(?:(?:Section|Sezione)\s+([0-9]+|[A-Z])\.?|([0-9]+|[A-Za-z])[.)])(?:\s+(.+))?$", re.S
+)
+NUMBERED = re.compile(r"^(\d+(?:\.\d+)*)\.?\s+(.+)$", re.S)  # "3.1. The application ..."
+ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
+
 
 @dataclass
 class Node:
     id: str  # e.g. "en_art6_p3_a": language, article, paragraph, point
-    kind: str  # "article" | "paragraph" | "point"
+    kind: str  # "article" | "paragraph" | "point" | "annex" | "annex_section"
     label: str  # as printed: "Article 6", "3", "(a)"
     text: str  # the node's own words, without its children
     parent_id: str | None
@@ -38,6 +50,7 @@ class Node:
     title: str = ""  # article title, e.g. "Classification rules for high-risk AI systems"
     chapter: str = ""  # roman numeral, e.g. "III"
     section: str = ""  # e.g. "1", empty when the chapter has no sections
+    annex: str = ""  # roman numeral for annex nodes, e.g. "III"
     amended: bool = False
     children: list["Node"] = field(default_factory=list, repr=False)
 
@@ -49,6 +62,11 @@ def clean(text: str) -> str:
 
 def classes(tag: Tag) -> set[str]:
     return set(tag.get("class") or [])
+
+
+def roman_to_int(roman: str) -> int:
+    values = [ROMAN[c] for c in roman]
+    return sum(-v if v < nxt else v for v, nxt in zip(values, values[1:] + [0], strict=True))
 
 
 def label_key(label: str) -> str:
@@ -160,17 +178,19 @@ class ArticleParser:
         else:
             self.append_text(owner, block.get_text(" "))
 
-    def parse_point(self, grid: Tag, owner: Node, article: Node) -> None:
+    def parse_point(self, grid: Tag, owner: Node, article: Node) -> Node | None:
         label_col = grid.find("div", class_="grid-list-column-1", recursive=False)
         body_col = grid.find("div", class_="grid-list-column-2", recursive=False)
         if label_col is None or body_col is None:
             self.append_text(owner, grid.get_text(" "))
-            return
-        label = clean(label_col.get_text())
+            return None
+        label = clean(label_col.get_text()).rstrip(".")  # "4." -> "4", like paragraphs
+        # Dash bullets ("—") have no number of their own: use their position.
+        key = label_key(label) or str(sum(c.kind == "point" for c in owner.children) + 1)
         sub = self.subparagraph.get(owner.id, 1)
         prefix = f"{owner.id}_s{sub}" if sub > 1 else owner.id
         point = Node(
-            id=f"{prefix}_{label_key(label)}",
+            id=f"{prefix}_{key}",
             kind="point",
             label=label,
             text="",
@@ -179,13 +199,106 @@ class ArticleParser:
             title=article.title,
             chapter=article.chapter,
             section=article.section,
+            annex=article.annex,
             amended=self.amended,
         )
         if DELETED.match(clean(body_col.get_text())):
-            return  # repealed point: keep no empty node
+            return None  # repealed point: keep no empty node
         self.add(point, owner)
         for child in body_col.find_all(recursive=False):
             self.parse_block(child, point, article)
+        return point
+
+    def parse_annex(self, div: Tag) -> Node:
+        roman = div["id"].removeprefix("anx_")
+        titles = [
+            clean(p.get_text())
+            for p in div.find_all("p", class_=["title-annex-1", "title-annex-2"], recursive=False)
+        ]
+        word, _, number = (titles[0] if titles else f"Annex {roman}").partition(" ")
+        label = f"{word.capitalize()} {number}"  # "ANNEX III" -> "Annex III"
+        annex = self.add(
+            Node(
+                id=f"{self.lang}_annex{roman_to_int(roman)}",
+                kind="annex",
+                label=label,
+                text="",
+                parent_id=None,
+                path=[label],
+                title=" ".join(titles[1:]),
+                annex=roman,
+                amended=self.amended,
+            ),
+            None,
+        )
+        sections: list[Node] = []  # open headings, one per level
+        numbered: Node | None = None  # last plain "3.1." paragraph in the current section
+        for block in div.find_all(recursive=False):
+            if self.marker(block) or {"title-annex-1", "title-annex-2"} & classes(block):
+                continue
+            owner = sections[-1] if sections else annex
+            level = next((c for c in classes(block) if c.startswith("title-gr-seq-level-")), None)
+            if level:
+                depth = int(level.rsplit("-", 1)[1])
+                text = clean(block.get_text())
+                match = ANNEX_HEADING.match(text)
+                if match is None and sections and not sections[-1].title:
+                    sections[-1].title = text  # "Section 1" followed by its title line
+                elif match is None:
+                    self.append_text(owner, text)
+                else:
+                    del sections[depth - 1 :]
+                    parent = sections[-1] if sections else annex
+                    sections.append(self.annex_section(match, parent, annex))
+                    numbered = None
+            elif "grid-list" in classes(block):
+                label = clean(block.get_text(" "))
+                if numbered is not None and not label[:1].isdigit():
+                    owner = numbered  # (a), (b) under a plain "3.1." paragraph
+                self.parse_point(block, owner, annex)
+            elif block.name == "div" and not classes(block):
+                match = NUMBERED.match(clean(block.get_text(" ")))
+                if match:
+                    numbered = self.annex_numbered(match, owner, annex)
+                else:
+                    self.append_text(numbered or owner, block.get_text(" "))
+            else:  # notes, "p.list" continuations, tables
+                self.append_text(numbered or owner, block.get_text(" "))
+        return annex
+
+    def annex_section(self, match: re.Match, parent: Node, annex: Node) -> Node:
+        number = match.group(1) or match.group(2)
+        label = f"Section {number}" if match.group(1) else number
+        return self.add(
+            Node(
+                id=f"{parent.id}_sec{number.lower()}",
+                kind="annex_section",
+                label=label,
+                text="",
+                parent_id=parent.id,
+                path=parent.path + [label],
+                title=(match.group(3) or "").lstrip("—– "),  # "Section A — Information ..."
+                annex=annex.annex,
+                amended=self.amended,
+            ),
+            parent,
+        )
+
+    def annex_numbered(self, match: re.Match, owner: Node, annex: Node) -> Node:
+        label = match.group(1)
+        return self.add(
+            Node(
+                id=f"{owner.id}_{label.replace('.', '_')}",
+                kind="point",
+                label=label,
+                text=match.group(2),
+                parent_id=owner.id,
+                path=owner.path + [label],
+                annex=annex.annex,
+                amended=self.amended,
+            ),
+            owner,
+        )
 
     @staticmethod
     def location(div: Tag) -> tuple[str, str]:
@@ -206,5 +319,15 @@ def parse_articles(html: str, lang: str) -> list[Node]:
     return parser.nodes
 
 
+def parse_annexes(html: str, lang: str) -> list[Node]:
+    """All annex, annex_section and point nodes, in reading order."""
+    soup = BeautifulSoup(html, "lxml")
+    parser = ArticleParser(lang)
+    for div in soup.find_all("div", id=re.compile(r"^anx_[IVXLC]+$")):
+        parser.parse_annex(div)
+    return parser.nodes
+
+
 def parse_file(path: Path, lang: str) -> list[Node]:
-    return parse_articles(path.read_text(encoding="utf-8"), lang)
+    html = path.read_text(encoding="utf-8")
+    return parse_articles(html, lang) + parse_annexes(html, lang)
