@@ -15,7 +15,8 @@ LAW = [
           "in Annex III shall not be considered to be high-risk"),
     Chunk("en_art6_p3_a", "en_art6_p3", "the AI system is intended to perform a narrow "
           "procedural task;"),
-    Chunk("en_art5_p1_f", "en_art5_p1", POINT_F),
+    Chunk("en_art5_p1_f", "en_art5_p1", POINT_F,
+          f"1 The following shall be prohibited:\n(f) {POINT_F}\n(g) biometric categorisation"),
 ]  # fmt: skip
 
 
@@ -29,7 +30,7 @@ def cite(chunk_id, quote):
 
 
 def test_normalise_ignores_layout_typography_and_case():
-    assert normalise(" The “Person’s\n  data” – ok. ") == 'the "person\'s data" - ok'
+    assert normalise(" The “Person’s\n  data” – ok. ") == 'the"person\'sdata"-ok'
 
 
 def test_a_long_quote_copied_with_other_line_breaks_matches():
@@ -43,6 +44,12 @@ def test_an_ellipsis_skips_words_but_the_fragments_must_keep_their_order():
     )
     assert quote_in("infer emotions […] workplace", POINT_F)
     assert not quote_in("workplace ... infer emotions", POINT_F)
+
+
+def test_a_point_label_and_a_missing_space_in_the_source_do_not_matter():
+    assert quote_in("4(a) AI systems intended to be used", "AI systems intended to be used")
+    assert quote_in("sistemi di IA per la valutazione", "l'uso di sistemi di IAper la valutazione")
+    assert quote_in("emotions ... (f) medical", "(e) emotions in (f) medical")
 
 
 def test_one_changed_word_fails():
@@ -73,6 +80,12 @@ def test_a_quote_from_a_sibling_point_moves_the_citation_there():
     assert moved.claim == "A claim."
 
 
+def test_a_quote_running_into_the_next_point_is_checked_against_the_whole_context():
+    [running] = verify([cite("en_art5_p1_f", "medical or safety reasons; (g) biometric")], lookup)
+    assert (running.chunk_id, running.verified) == ("en_art5_p1_f", True)
+    assert running.note == "quote runs beyond en_art5_p1_f"
+
+
 def test_no_citations_need_no_lookup():
     def fail(ids):
         raise AssertionError("no lookup expected")
@@ -85,9 +98,10 @@ def test_fetch_chunks_returns_the_siblings_and_skips_unknown_ids(db):
         {"en_art6_p3": "lead-in", "en_art6_p3_a": "point a", "en_art5_p1": "other"}
     )
     chunks[1]["context_id"] = "en_art6_p3"
+    contexts[0]["text"] = "lead-in (a) point a"
     load(db, "v1", chunks, contexts, vectors, MODEL)
     found = fetch_chunks(db, ["en_art6_p3", "en_annex3_9_z"])
-    assert [(c.id, c.context_id, c.text) for c in found] == [
-        ("en_art6_p3", "en_art6_p3", "lead-in"),
-        ("en_art6_p3_a", "en_art6_p3", "point a"),
+    assert [(c.id, c.context_id, c.text, c.context_text) for c in found] == [
+        ("en_art6_p3", "en_art6_p3", "lead-in", "lead-in (a) point a"),
+        ("en_art6_p3_a", "en_art6_p3", "point a", "lead-in (a) point a"),
     ]

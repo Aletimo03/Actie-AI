@@ -4,14 +4,17 @@ Code builds each citation's chunk id from the model's label ("4(a)" ->
 "en_annex3_4_a"), and the model writes the quote. Both can be wrong: a point
 that does not exist, or words that are not in the text. So for each citation:
 1. the chunk must exist in the current version;
-2. the quote must be in that chunk, after normalising whitespace, quotes,
-   dashes and case; a quote that skips words with "..." passes if every
-   fragment appears, in order. No fuzzy matching: one changed word
-   ("shall" / "shall not") can reverse a provision.
-The model reads whole contexts (Article 6(3) with its points), so a correct
-quote may sit in a sibling chunk of the same context: the citation then moves
-to that chunk. A citation that still fails is kept and marked unverified, and
-the verdict stands: like an open exception, it errs towards more obligations.
+2. the quote must be in that chunk, compared without whitespace, point labels
+   ("4(a)", "i)"), quote styles, dashes or case; a quote that skips words
+   with "..." passes if every fragment appears, in order. No fuzzy matching:
+   one changed word ("shall" / "shall not") can reverse a provision.
+Whitespace is dropped, not just collapsed, because the source text has gaps
+of its own (the Italian Art. 5(1)(c) reads "sistemi di IAper"). The model
+reads whole contexts (Article 6(3) with its points), so a correct quote may
+sit in a sibling chunk: the citation then moves there. A quote that runs on
+into the next point is checked against the whole context. A citation that
+still fails is kept and marked unverified, and the verdict stands: like an
+open exception, it errs towards more obligations.
 """
 
 import re
@@ -29,7 +32,9 @@ QUOTES = str.maketrans(
     {"‘": "'", "’": "'", "‚": "'", "“": '"', "”": '"', "„": '"', "«": '"', "»": '"'}
 )
 DASHES = re.compile(r"[‐‑‒–—―]")
-EDGES = " \t\n'\".,;:()[]"
+EDGES = "'\".,;:()[]"
+# A point label, alone or after a number: "(a)", "a)", "4(a)", "(ii)", "6(2)".
+LABEL = re.compile(r"\b\d{0,3}\s*\(?\b[a-z0-9]{1,4}\)")
 
 
 @dataclass
@@ -37,12 +42,14 @@ class Chunk:
     id: str
     context_id: str
     text: str
+    context_text: str = ""  # the whole unit the model read
 
 
 def normalise(text: str) -> str:
-    text = unicodedata.normalize("NFKC", text).translate(QUOTES)
-    text = DASHES.sub("-", text)
-    return " ".join(text.split()).lower().strip(EDGES)
+    """The text as compared: no labels, no whitespace, one quote style, lower case."""
+    text = unicodedata.normalize("NFKC", text).translate(QUOTES).lower()
+    text = LABEL.sub("", DASHES.sub("-", text))
+    return "".join(text.split()).strip(EDGES)
 
 
 def quote_in(quote: str, text: str) -> bool:
@@ -65,10 +72,11 @@ def fetch_chunks(conn: psycopg.Connection, ids: list[str]) -> list[Chunk]:
     Unknown ids are left out, not raised: a missing chunk is what verify reports.
     """
     rows = conn.execute(
-        "SELECT id, context_id, text FROM chunks "
-        f"WHERE version = {CURRENT_VERSION} AND context_id IN "
+        "SELECT c.id, c.context_id, c.text, x.text FROM chunks c "
+        "JOIN contexts x ON x.id = c.context_id AND x.version = c.version "
+        f"WHERE c.version = {CURRENT_VERSION} AND c.context_id IN "
         f"(SELECT context_id FROM chunks WHERE version = {CURRENT_VERSION} "
-        "AND id = ANY(%(ids)s)) ORDER BY id",
+        "AND id = ANY(%(ids)s)) ORDER BY c.id",
         {"ids": ids},
     ).fetchall()
     return [Chunk(*row) for row in rows]
@@ -93,6 +101,8 @@ def verify(citations: list[Citation], lookup: Callable[[list[str]], list[Chunk]]
             if sibling:
                 note = f"quote found in {sibling.id}, not {chunk.id}"
                 update = {"chunk_id": sibling.id, "verified": True, "note": note}
+            elif quote_in(citation.quote, chunk.context_text):
+                update = {"verified": True, "note": f"quote runs beyond {chunk.id}"}
             else:
                 update = {"verified": False, "note": f"quote not found in {chunk.id}"}
         checked.append(citation.model_copy(update=update))
