@@ -5,7 +5,7 @@
                   v
            check_prohibited --(uncertain)--> ask_user -> extract_facts
                   |      \
-                  |       (prohibited)--> report
+                  |       (prohibited)--> verify_citations
                   v
            check_high_risk --(uncertain)--> ask_user -> extract_facts
                   |
@@ -13,15 +13,16 @@
            check_transparency --(uncertain)--> ask_user -> extract_facts
                   |
                   v
-               report -> END
+           verify_citations -> report -> END
 
 The LLM fills schemas inside the nodes; the edges are plain functions of the
 state, so every branch is decided by code. ask_user pauses the run with
 interrupt(): the questions go to the caller, and the run resumes from the
 checkpoint when the answers come back (Command(resume={question id: answer})).
 After the answers the facts are extracted again and the checks run again, so
-each check keeps only its latest result and report collects citations from
-those, never from earlier, possibly stale runs.
+each check keeps only its latest result and verify_citations collects the
+citations from those, never from earlier, possibly stale runs, and checks
+each quote against the law text before the report shows it.
 """
 
 from collections.abc import Callable
@@ -31,6 +32,7 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from backend.app.agent.citations import Chunk, verify
 from backend.app.agent.facts import Facts, extract_facts, missing_facts
 from backend.app.agent.high_risk import (
     AnnexIIIFinding,
@@ -120,6 +122,7 @@ class Assessment(TypedDict, total=False):
     prohibited: ProhibitedResult
     high_risk: HighRiskResult
     transparency: TransparencyResult
+    citations: list[Citation]  # from the latest results, verified
     report: dict
 
 
@@ -133,7 +136,7 @@ def after_facts(state: Assessment) -> str:
 
 def after_prohibited(state: Assessment) -> str:
     if state["prohibited"].is_prohibited:
-        return "report"  # a ban ends the assessment: nothing else can make it lawful
+        return "verify_citations"  # a ban ends the assessment: nothing else can make it lawful
     return "ask_user" if needs_answers(state) else "check_high_risk"
 
 
@@ -142,7 +145,7 @@ def after_high_risk(state: Assessment) -> str:
 
 
 def after_transparency(state: Assessment) -> str:
-    return "ask_user" if needs_answers(state) else "report"
+    return "ask_user" if needs_answers(state) else "verify_citations"
 
 
 def risk_level(state: Assessment) -> str:
@@ -155,14 +158,22 @@ def risk_level(state: Assessment) -> str:
     return "limited" if transparency.duties or transparency.others else "minimal"
 
 
+def latest_results(state: Assessment) -> list:
+    """The results the report rests on: a ban ends the assessment after Article 5."""
+    if state["prohibited"].is_prohibited:
+        return [state["prohibited"]]
+    return [state["prohibited"], state["high_risk"], state["transparency"]]
+
+
 def report(state: Assessment) -> dict:
     prohibited = state["prohibited"]
     risk = risk_level(state)
+    results = latest_results(state)
     if risk == "prohibited":
-        results, high_risk, transparency = [prohibited], None, None
+        high_risk, transparency = None, None
     else:
         high_risk, transparency = state["high_risk"], state["transparency"]
-        results = [prohibited, high_risk, transparency]
+    citations = state["citations"]
     return {
         "report": {
             "risk": risk,
@@ -173,12 +184,18 @@ def report(state: Assessment) -> dict:
             "other_role_duties": [vars(d) for d in transparency.others] if transparency else [],
             "uncertain": [name for r in results for name in r.uncertain],
             "assumed_unknown": missing_facts(state["facts"]),
-            "citations": [c.model_dump() for r in results for c in r.citations],
+            "citations": [c.model_dump() for c in citations],
+            "unverified": [c.chunk_id for c in citations if not c.verified],
         }
     }
 
 
-def build_graph(llm: StructuredLLM, fetch: Callable[[list[str]], list[Context]], checkpointer=None):
+def build_graph(
+    llm: StructuredLLM,
+    fetch: Callable[[list[str]], list[Context]],
+    lookup: Callable[[list[str]], list[Chunk]],
+    checkpointer=None,
+):
     def extract_facts_node(state: Assessment) -> dict:
         facts = extract_facts(llm, state["description"], state.get("answers"))
         questions = [
@@ -210,6 +227,10 @@ def build_graph(llm: StructuredLLM, fetch: Callable[[list[str]], list[Context]],
         ]
         return {"transparency": result, "questions": questions}
 
+    def verify_citations(state: Assessment) -> dict:
+        cited = [c for r in latest_results(state) for c in r.citations]
+        return {"citations": verify(cited, lookup)}
+
     def ask_user(state: Assessment) -> dict:
         # On resume this node runs again from the top and interrupt() returns the answers,
         # so nothing before it may have side effects. To skip, resume with blank answers
@@ -229,16 +250,20 @@ def build_graph(llm: StructuredLLM, fetch: Callable[[list[str]], list[Context]],
     graph.add_node("check_prohibited", check_prohibited_node)
     graph.add_node("check_high_risk", check_high_risk_node)
     graph.add_node("check_transparency", check_transparency_node)
+    graph.add_node("verify_citations", verify_citations)
     graph.add_node("report", report)
     graph.add_edge(START, "extract_facts")
     graph.add_conditional_edges("extract_facts", after_facts, ["ask_user", "check_prohibited"])
     graph.add_conditional_edges(
-        "check_prohibited", after_prohibited, ["ask_user", "check_high_risk", "report"]
+        "check_prohibited", after_prohibited, ["ask_user", "check_high_risk", "verify_citations"]
     )
     graph.add_conditional_edges(
         "check_high_risk", after_high_risk, ["ask_user", "check_transparency"]
     )
-    graph.add_conditional_edges("check_transparency", after_transparency, ["ask_user", "report"])
+    graph.add_conditional_edges(
+        "check_transparency", after_transparency, ["ask_user", "verify_citations"]
+    )
     graph.add_edge("ask_user", "extract_facts")
+    graph.add_edge("verify_citations", "report")
     graph.add_edge("report", END)
     return graph.compile(checkpointer=checkpointer)

@@ -60,6 +60,8 @@ class Citation(BaseModel):
     chunk_id: str
     quote: str
     claim: str
+    verified: bool = False  # set by verify_citations, never by the model
+    note: str = ""  # why it failed, or where the quote was found instead
 
 
 SYSTEM = """You check an AI system against Article 5 of the EU AI Act (prohibited practices).

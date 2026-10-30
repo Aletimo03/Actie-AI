@@ -3,6 +3,7 @@ import logging
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
+from backend.app.agent.citations import Chunk
 from backend.app.agent.facts import Facts
 from backend.app.agent.graph import (
     MAX_ROUNDS,
@@ -23,7 +24,8 @@ UNKNOWN = Facts(summary="Something")
 NO = {"applies": "no", "reason": "Does not match."}
 CLEAR = ProhibitedCheck(**dict.fromkeys(PRACTICES, NO))
 BANNED = ProhibitedCheck(
-    **dict.fromkeys(PRACTICES, NO) | {"f": {"applies": "yes", "reason": "Emotions.", "quote": "q"}}
+    **dict.fromkeys(PRACTICES, NO)
+    | {"f": {"applies": "yes", "reason": "Emotions.", "quote": "the words"}}
 )
 UNSURE = ProhibitedCheck(
     **dict.fromkeys(PRACTICES, NO)
@@ -32,11 +34,12 @@ UNSURE = ProhibitedCheck(
 LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO)
 NONE = TransparencyCheck(**dict.fromkeys(RULES, NO))
 CHATBOT = TransparencyCheck(
-    **dict.fromkeys(RULES, NO) | {"interacts": {"applies": "yes", "reason": "Chats.", "quote": "q"}}
+    **dict.fromkeys(RULES, NO)
+    | {"interacts": {"applies": "yes", "reason": "Chats.", "quote": "the words"}}
 )
 HIGH = HighRiskCheck(
     annex_i=NO,
-    annex_iii={"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "recruitment"},
+    annex_iii={"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "The words"},
     exception=NO,
 )
 
@@ -57,9 +60,13 @@ def fetch(ids):
     return [Context(i, i, f"text of {i}") for i in ids]
 
 
-def run(llm, *resumes, lang="en"):
+def lookup(ids):
+    return [Chunk(i, i, f"{i}: the words of the law") for i in ids]
+
+
+def run(llm, *resumes, lang="en", lookup=lookup):
     """Start an assessment, answer each interrupt in turn, return every step's output."""
-    graph = build_graph(llm, fetch, InMemorySaver(serde=SERDE))
+    graph = build_graph(llm, fetch, lookup, InMemorySaver(serde=SERDE))
     config = {"configurable": {"thread_id": "t1"}}
     outputs = [graph.invoke({"description": "A system.", "lang": lang}, config)]
     for answers in resumes:
@@ -89,7 +96,22 @@ def test_an_annex_iii_match_is_high_risk_with_its_citation():
     )
     assert state["report"]["risk"] == "high"
     assert state["report"]["high_risk_basis"] == ["en_annex3_4_a"]
-    assert [c["chunk_id"] for c in state["report"]["citations"]] == ["en_annex3_4_a"]
+    [citation] = state["report"]["citations"]
+    assert (citation["chunk_id"], citation["verified"]) == ("en_annex3_4_a", True)
+    assert state["report"]["unverified"] == []
+
+
+def test_a_citation_the_law_does_not_back_is_flagged_and_the_verdict_stands():
+    def law_without_annex_iii(ids):
+        return [c for c in lookup(ids) if "annex3" not in c.id]
+
+    llm = ScriptedLLM(
+        Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH], TransparencyCheck=[CHATBOT]
+    )
+    [state] = run(llm, lookup=law_without_annex_iii)
+    assert state["report"]["risk"] == "high"
+    assert state["report"]["unverified"] == ["en_annex3_4_a"]
+    assert [c["verified"] for c in state["report"]["citations"]] == [False, True]
 
 
 def test_transparency_duties_alone_make_a_limited_risk_system():
@@ -200,11 +222,12 @@ def test_edges_are_plain_functions_of_the_state():
     assert after_facts({"questions": question}) == "ask_user"
     assert after_facts({"questions": question, "rounds": MAX_ROUNDS}) == "check_prohibited"
     assert after_facts({"questions": []}) == "check_prohibited"
-    assert after_prohibited({"prohibited": decide(BANNED, "en"), "questions": []}) == "report"
+    banned = {"prohibited": decide(BANNED, "en"), "questions": []}
+    assert after_prohibited(banned) == "verify_citations"
     unsure = {"prohibited": decide(UNSURE, "en"), "questions": question}
     assert after_prohibited(unsure) == "ask_user"
     assert after_prohibited(unsure | {"rounds": MAX_ROUNDS}) == "check_high_risk"
     assert after_high_risk({"questions": question}) == "ask_user"
     assert after_high_risk({"questions": []}) == "check_transparency"
     assert after_transparency({"questions": question}) == "ask_user"
-    assert after_transparency({"questions": []}) == "report"
+    assert after_transparency({"questions": []}) == "verify_citations"
