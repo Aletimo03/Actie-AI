@@ -15,6 +15,7 @@ local Ollama to Groq is a .env change, not a code change:
 import json
 import os
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol, TypeVar
@@ -31,6 +32,10 @@ LLM_REASONING_EFFORT = os.environ.get("LLM_REASONING_EFFORT") or None
 # measured, a 13.9k-token prompt at num_ctx=2048 was read as 1027 tokens, with no error.
 LLM_NUM_CTX = int(os.environ.get("LLM_NUM_CTX") or 0) or None
 PROMPT_SHARE = 0.75  # of the window; the rest is for the reply and tokenizer differences
+# Free tiers limit tokens per minute (Groq: 8000), and LiteLLM's own retries come back
+# before the window frees up. On a 429 we wait as long as the provider asks, up to this.
+RATE_LIMIT_BUDGET = 180  # seconds of waiting per call before giving up
+RETRY_IN = re.compile(r"try again in (?:(\d+)m)?([\d.]+)s")
 SCHEMA_RETRIES = 1  # network errors are retried by LiteLLM itself (num_retries)
 
 T = TypeVar("T", bound=BaseModel)
@@ -56,6 +61,7 @@ class Usage:
     calls: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0
+    rate_limit_wait: float = 0.0  # seconds spent waiting for the provider's rate limit
 
 
 def with_schema(system: str, schema: type[BaseModel]) -> str:
@@ -68,6 +74,15 @@ def with_schema(system: str, schema: type[BaseModel]) -> str:
     """
     fields = json.dumps(schema.model_json_schema())
     return f"{system}\n\nReply with JSON matching this schema:\n{fields}"
+
+
+def retry_after(error: Exception) -> float:
+    """Seconds the provider asked us to wait ("try again in 1m2.5s"), plus a margin."""
+    match = RETRY_IN.search(str(error))
+    if not match:
+        return 10.0
+    minutes, seconds = match.groups()
+    return int(minutes or 0) * 60 + float(seconds) + 0.5
 
 
 def strip_fences(text: str) -> str:
@@ -83,6 +98,7 @@ class LLM:
         reasoning_effort: str | None = LLM_REASONING_EFFORT,
         num_ctx: int | None = LLM_NUM_CTX,
         count_tokens: Callable = litellm.token_counter,
+        sleep: Callable[[float], None] = time.sleep,
         completion: Callable = litellm.completion,
         num_retries: int = 2,
         timeout: float = 300,  # local models on a laptop: a long prompt can take 2-3 minutes
@@ -92,6 +108,7 @@ class LLM:
         self.reasoning_effort = reasoning_effort
         self.num_ctx = num_ctx
         self.count_tokens = count_tokens
+        self.sleep = sleep
         self.completion = completion
         self.num_retries = num_retries
         self.timeout = timeout
@@ -135,15 +152,26 @@ class LLM:
             options["fallbacks"] = self.fallbacks
         if self.reasoning_effort:
             options["reasoning_effort"] = self.reasoning_effort
-        response = self.completion(
-            model=self.model,
-            messages=messages,
-            response_format=schema,
-            temperature=0,  # same input, (nearly) same verdict
-            num_retries=self.num_retries,
-            timeout=self.timeout,
-            **options,
-        )
+        waited = 0.0
+        while True:
+            try:
+                response = self.completion(
+                    model=self.model,
+                    messages=messages,
+                    response_format=schema,
+                    temperature=0,  # same input, (nearly) same verdict
+                    num_retries=self.num_retries,
+                    timeout=self.timeout,
+                    **options,
+                )
+                break
+            except litellm.RateLimitError as error:
+                wait = retry_after(error)
+                if waited + wait > RATE_LIMIT_BUDGET:
+                    raise
+                self.usage.rate_limit_wait += wait
+                waited += wait
+                self.sleep(wait)
         self.usage.calls += 1
         self.usage.prompt_tokens += response.usage.prompt_tokens
         self.usage.completion_tokens += response.usage.completion_tokens

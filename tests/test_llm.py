@@ -2,10 +2,19 @@ import os
 from types import SimpleNamespace
 from typing import Literal
 
+import litellm
 import pytest
 from pydantic import BaseModel, Field
 
-from backend.app.llm import LLM, PromptTooLong, SchemaError, strip_fences, with_schema
+from backend.app.llm import (
+    LLM,
+    RATE_LIMIT_BUDGET,
+    PromptTooLong,
+    SchemaError,
+    retry_after,
+    strip_fences,
+    with_schema,
+)
 
 
 class Facts(BaseModel):
@@ -28,6 +37,8 @@ class FakeCompletion:
     def __call__(self, **kwargs):
         self.calls.append(kwargs)
         content = self.replies.pop(0)
+        if isinstance(content, Exception):
+            raise content
         return SimpleNamespace(
             choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
             usage=SimpleNamespace(prompt_tokens=100, completion_tokens=20),
@@ -109,6 +120,34 @@ def test_hosted_models_get_no_ollama_options():
     llm, fake = make_llm(VALID, num_ctx=1000)
     llm.ask("s", "u", Facts)
     assert "num_ctx" not in fake.calls[0]
+
+
+def limited(wait: str) -> litellm.RateLimitError:
+    message = f"Rate limit reached on tokens per minute (TPM). Please try again in {wait}."
+    return litellm.RateLimitError(message, llm_provider="groq", model="m")
+
+
+def test_retry_after_reads_the_providers_wait():
+    assert retry_after(limited("7.0275s")) == 7.5275
+    assert retry_after(limited("1m2.5s")) == 63.0
+    assert retry_after(RuntimeError("no hint")) == 10.0
+
+
+def test_rate_limits_are_waited_out_then_retried():
+    waits = []
+    fake = FakeCompletion(limited("7s"), limited("2.5s"), VALID)
+    llm = LLM(model="groq/m", completion=fake, sleep=waits.append)
+    assert llm.ask("s", "u", Facts).domain == "education"
+    assert waits == [7.5, 3.0] and llm.usage.rate_limit_wait == 10.5
+    assert llm.usage.calls == 1  # only the answered call counts
+
+
+def test_rate_limit_waits_stop_at_the_budget():
+    fake = FakeCompletion(*[limited("59s")] * 10)
+    llm = LLM(model="groq/m", completion=fake, sleep=lambda _: None)
+    with pytest.raises(litellm.RateLimitError):
+        llm.ask("s", "u", Facts)
+    assert len(fake.calls) == RATE_LIMIT_BUDGET // 60 + 1
 
 
 def test_code_fences_are_stripped():

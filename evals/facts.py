@@ -109,8 +109,9 @@ def main() -> None:
     started = time.monotonic()
     result = score(extract, load_cases(), args.runs)
     report(args.model, result, time.monotonic() - started)
-    print(f"  tokens: {llm.usage.prompt_tokens} in, {llm.usage.completion_tokens} out, "
-          f"{llm.usage.calls} calls")  # fmt: skip
+    usage = llm.usage
+    print(f"  tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out, {usage.calls} "
+          f"calls, {usage.rate_limit_wait:.0f} s waiting for rate limits")  # fmt: skip
 
 
 if __name__ == "__main__":
