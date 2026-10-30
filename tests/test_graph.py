@@ -1,4 +1,5 @@
 import logging
+from datetime import date
 
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
@@ -16,10 +17,12 @@ from backend.app.agent.graph import (
     build_graph,
 )
 from backend.app.agent.high_risk import ExceptionFinding, HighRiskCheck
+from backend.app.agent.obligations import SOURCES
 from backend.app.agent.prohibited import PRACTICES, ProhibitedCheck, decide
 from backend.app.agent.transparency import RULES, TransparencyCheck
 from backend.app.retrieval.contexts import Context
 
+TODAY = date(2026, 10, 30)
 KNOWN = Facts(
     purpose="Rank CVs",
     domain="employment",
@@ -69,13 +72,21 @@ def fetch(ids):
     return [Context(i, i, f"text of {i}") for i in ids]
 
 
+DATES = " ".join(quote["en"] for _, _, quote in SOURCES.values())
+
+
 def lookup(ids):
-    return [Chunk(i, i, f"{i}: the words of the law") for i in ids]
+    return [Chunk(i, i, f"{i}: the words of the law. {DATES}") for i in ids]
+
+
+def findings(report):
+    """The citations of the checks, without the ones that date the obligations."""
+    return [c for c in report["citations"] if "_art113" not in c["chunk_id"]]
 
 
 def run(llm, *resumes, lang="en", lookup=lookup):
     """Start an assessment, answer each interrupt in turn, return every step's output."""
-    graph = build_graph(llm, fetch, lookup, InMemorySaver(serde=SERDE))
+    graph = build_graph(llm, fetch, lookup, InMemorySaver(serde=SERDE), today=lambda: TODAY)
     config = {"configurable": {"thread_id": "t1"}}
     outputs = [graph.invoke({"description": "A system.", "lang": lang}, config)]
     for answers in resumes:
@@ -93,7 +104,7 @@ def test_no_ban_and_no_annex_match_is_not_high_risk():
     )
     [state] = run(llm)
     assert state["report"]["risk"] == "minimal"
-    assert state["report"]["citations"] == [] and state["report"]["assumed_unknown"] == []
+    assert findings(state["report"]) == [] and state["report"]["assumed_unknown"] == []
     assert steps(llm) == ["Facts", "ProhibitedCheck", "HighRiskCheck", "TransparencyCheck"]
 
 
@@ -105,7 +116,7 @@ def test_an_annex_iii_match_is_high_risk_with_its_citation():
     )
     assert state["report"]["risk"] == "high"
     assert state["report"]["high_risk_basis"] == ["en_annex3_4_a"]
-    [citation] = state["report"]["citations"]
+    [citation] = findings(state["report"])
     assert (citation["chunk_id"], citation["verified"]) == ("en_annex3_4_a", True)
     assert state["report"]["unverified"] == []
 
@@ -120,7 +131,7 @@ def test_a_citation_the_law_does_not_back_is_flagged_and_the_verdict_stands():
     [state] = run(llm, lookup=law_without_annex_iii)
     assert state["report"]["risk"] == "high"
     assert state["report"]["unverified"] == ["en_annex3_4_a"]
-    assert [c["verified"] for c in state["report"]["citations"]] == [False, True]
+    assert [c["verified"] for c in findings(state["report"])] == [False, True]
 
 
 def test_transparency_duties_alone_make_a_limited_risk_system():
@@ -147,7 +158,7 @@ def test_high_risk_systems_also_get_their_transparency_duties():
     # KNOWN is a deployer: the chatbot disclosure is the provider's duty, shown for context
     assert state["report"]["transparency_duties"] == []
     assert state["report"]["other_role_duties"][0]["chunk_id"] == "en_art50_p1"
-    assert [c["chunk_id"] for c in state["report"]["citations"]] == ["en_annex3_4_a", "en_art50_p1"]
+    assert [c["chunk_id"] for c in findings(state["report"])] == ["en_annex3_4_a", "en_art50_p1"]
 
 
 def test_a_ban_skips_the_high_risk_check():
@@ -241,7 +252,7 @@ def test_edges_are_plain_functions_of_the_state():
     assert after_transparency({"questions": question}) == "ask_user"
     assert after_transparency({"questions": []}) == "determine_role"
     assert after_role({"questions": question}) == "ask_user"
-    assert after_role({"questions": []}) == "verify_citations"
+    assert after_role({"questions": []}) == "list_obligations"
 
 
 def test_a_deployer_of_a_high_risk_system_is_asked_about_article_25_and_becomes_provider():
@@ -268,3 +279,29 @@ def test_a_minimal_risk_deployer_is_not_asked_about_article_25():
     )
     [state] = run(llm)
     assert (state["report"]["role"], state["report"]["uncertain"]) == ("deployer", [])
+
+
+def test_a_high_risk_deployer_gets_dated_obligations_checked_against_the_text():
+    llm = ScriptedLLM(
+        Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH], TransparencyCheck=[NONE]
+    )
+    [state] = run(llm, lookup=lambda ids: [c for c in lookup(ids) if c.id != "en_art26_p6"])
+    report = state["report"]
+    by_id = {o["chunk_id"]: o for o in report["obligations"]}
+    assert (by_id["en_art4_p1"]["applies_from"], by_id["en_art4_p1"]["in_force"]) == (
+        "2025-02-02",
+        True,
+    )
+    assert (by_id["en_art26_p1"]["applies_from"], by_id["en_art26_p1"]["in_force"]) == (
+        "2027-12-02",
+        False,
+    )
+    assert "en_art9_p1" not in by_id  # a provider duty
+    assert report["unverified"] == ["en_art26_p6"]  # the one article the lookup lacks
+    assert {"en_art113_a", "en_art113_c_i"} <= {c["chunk_id"] for c in report["citations"]}
+    assert any("111(2)" in note for note in report["notes"])
+
+
+def test_a_banned_system_gets_no_obligations():
+    [state] = run(ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[BANNED]))
+    assert state["report"]["obligations"] == [] and state["report"]["notes"] == []

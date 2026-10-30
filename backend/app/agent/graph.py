@@ -16,7 +16,7 @@
            determine_role --(Art. 25 unknown)--> ask_user -> extract_facts
                   |
                   v
-           verify_citations -> report -> END
+           list_obligations -> verify_citations -> report -> END
 
 The LLM fills schemas inside the nodes; the edges are plain functions of the
 state, so every branch is decided by code. ask_user pauses the run with
@@ -28,14 +28,16 @@ citations from those, never from earlier, possibly stale runs, and checks
 each quote against the law text before the report shows it.
 """
 
+import dataclasses
 from collections.abc import Callable
+from datetime import date
 from typing import TypedDict
 
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
-from backend.app.agent.citations import Chunk, verify
+from backend.app.agent.citations import Chunk, existing, verify
 from backend.app.agent.facts import Facts, extract_facts, missing_facts
 from backend.app.agent.high_risk import (
     AnnexIIIFinding,
@@ -45,6 +47,7 @@ from backend.app.agent.high_risk import (
     ProductFinding,
     check_high_risk,
 )
+from backend.app.agent.obligations import Obligation, ObligationsResult, decide_obligations
 from backend.app.agent.prohibited import (
     Citation,
     Finding,
@@ -80,6 +83,8 @@ STATE_TYPES = [
         TransparencyResult,
         Duty,
         RoleResult,
+        Obligation,
+        ObligationsResult,
     )
 ]
 SERDE = JsonPlusSerializer(allowed_msgpack_modules=STATE_TYPES)  # use for every checkpointer
@@ -128,6 +133,7 @@ class Assessment(TypedDict, total=False):
     high_risk: HighRiskResult
     transparency: TransparencyResult
     role: RoleResult
+    obligations: ObligationsResult
     citations: list[Citation]  # from the latest results, verified
     report: dict
 
@@ -155,7 +161,7 @@ def after_transparency(state: Assessment) -> str:
 
 
 def after_role(state: Assessment) -> str:
-    return "ask_user" if needs_answers(state) else "verify_citations"
+    return "ask_user" if needs_answers(state) else "list_obligations"
 
 
 def risk_level(state: Assessment) -> str:
@@ -172,7 +178,13 @@ def latest_results(state: Assessment) -> list:
     """The results the report rests on: a ban ends the assessment after Article 5."""
     if state["prohibited"].is_prohibited:
         return [state["prohibited"]]
-    return [state["prohibited"], state["high_risk"], state["transparency"], state["role"]]
+    return [
+        state["prohibited"],
+        state["high_risk"],
+        state["transparency"],
+        state["role"],
+        state["obligations"],
+    ]
 
 
 def report(state: Assessment) -> dict:
@@ -184,6 +196,7 @@ def report(state: Assessment) -> dict:
     else:
         high_risk, transparency = state["high_risk"], state["transparency"]
     citations = state["citations"]
+    obligations = state["obligations"] if risk != "prohibited" else ObligationsResult()
     return {
         "report": {
             "risk": risk,
@@ -196,8 +209,14 @@ def report(state: Assessment) -> dict:
             "other_role_duties": [vars(d) for d in transparency.others] if transparency else [],
             "uncertain": [name for r in results for name in r.uncertain],
             "assumed_unknown": missing_facts(state["facts"]),
+            "obligations": [
+                vars(o) | {"applies_from": o.applies_from.isoformat()}
+                for o in obligations.obligations
+            ],
+            "notes": obligations.notes,
             "citations": [c.model_dump() for c in citations],
-            "unverified": [c.chunk_id for c in citations if not c.verified],
+            "unverified": [c.chunk_id for c in citations if not c.verified]
+            + [o.chunk_id for o in obligations.obligations if not o.verified],
         }
     }
 
@@ -207,6 +226,7 @@ def build_graph(
     fetch: Callable[[list[str]], list[Context]],
     lookup: Callable[[list[str]], list[Chunk]],
     checkpointer=None,
+    today: Callable[[], date] = date.today,
 ):
     def extract_facts_node(state: Assessment) -> dict:
         facts = extract_facts(llm, state["description"], state.get("answers"))
@@ -247,9 +267,23 @@ def build_graph(
         ]
         return {"role": result, "questions": questions}
 
+    def list_obligations(state: Assessment) -> dict:
+        duties = state["transparency"].duties
+        basis = state["high_risk"].basis
+        result = decide_obligations(state["role"].role, basis, duties, state["lang"], today())
+        return {"obligations": result}
+
     def verify_citations(state: Assessment) -> dict:
         cited = [c for r in latest_results(state) for c in r.citations]
-        return {"citations": verify(cited, lookup)}
+        update = {"citations": verify(cited, lookup)}
+        if not state["prohibited"].is_prohibited:
+            result = state["obligations"]
+            found = existing([o.chunk_id for o in result.obligations], lookup)
+            checked = [
+                dataclasses.replace(o, verified=o.chunk_id in found) for o in result.obligations
+            ]
+            update["obligations"] = dataclasses.replace(result, obligations=checked)
+        return update
 
     def ask_user(state: Assessment) -> dict:
         # On resume this node runs again from the top and interrupt() returns the answers,
@@ -271,6 +305,7 @@ def build_graph(
     graph.add_node("check_high_risk", check_high_risk_node)
     graph.add_node("check_transparency", check_transparency_node)
     graph.add_node("determine_role", determine_role)
+    graph.add_node("list_obligations", list_obligations)
     graph.add_node("verify_citations", verify_citations)
     graph.add_node("report", report)
     graph.add_edge(START, "extract_facts")
@@ -284,7 +319,8 @@ def build_graph(
     graph.add_conditional_edges(
         "check_transparency", after_transparency, ["ask_user", "determine_role"]
     )
-    graph.add_conditional_edges("determine_role", after_role, ["ask_user", "verify_citations"])
+    graph.add_conditional_edges("determine_role", after_role, ["ask_user", "list_obligations"])
+    graph.add_edge("list_obligations", "verify_citations")
     graph.add_edge("ask_user", "extract_facts")
     graph.add_edge("verify_citations", "report")
     graph.add_edge("report", END)

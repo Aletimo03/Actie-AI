@@ -1,6 +1,13 @@
 from conftest import MODEL, make_rows
 
-from backend.app.agent.citations import Chunk, fetch_chunks, normalise, quote_in, verify
+from backend.app.agent.citations import (
+    Chunk,
+    existing,
+    fetch_chunks,
+    normalise,
+    quote_in,
+    verify,
+)
 from backend.app.agent.prohibited import Citation
 from ingestion.load import load
 
@@ -84,6 +91,10 @@ def test_a_quote_running_into_the_next_point_is_checked_against_the_whole_contex
     [running] = verify([cite("en_art5_p1_f", "medical or safety reasons; (g) biometric")], lookup)
     assert (running.chunk_id, running.verified) == ("en_art5_p1_f", True)
     assert running.note == "quote runs beyond en_art5_p1_f"
+
+
+def test_existing_names_only_the_ids_asked_for():
+    assert existing(["en_art6_p3", "en_annex3_9_z"], lookup) == {"en_art6_p3"}
 
 
 def test_no_citations_need_no_lookup():

@@ -107,3 +107,9 @@ def verify(citations: list[Citation], lookup: Callable[[list[str]], list[Chunk]]
                 update = {"verified": False, "note": f"quote not found in {chunk.id}"}
         checked.append(citation.model_copy(update=update))
     return checked
+
+
+def existing(ids: list[str], lookup: Callable[[list[str]], list[Chunk]]) -> set[str]:
+    """Which of these chunk ids are provisions of the current text."""
+    wanted = set(ids)
+    return {chunk.id for chunk in lookup(sorted(wanted))} & wanted if ids else set()
