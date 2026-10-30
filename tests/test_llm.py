@@ -5,7 +5,7 @@ from typing import Literal
 import pytest
 from pydantic import BaseModel, Field
 
-from backend.app.llm import LLM, SchemaError, strip_fences, with_schema
+from backend.app.llm import LLM, PromptTooLong, SchemaError, strip_fences, with_schema
 
 
 class Facts(BaseModel):
@@ -90,6 +90,25 @@ def test_optional_settings_are_passed_only_when_set():
     llm.ask("s", "u", Facts)
     assert fake.calls[0]["fallbacks"] == ["groq/other"]
     assert fake.calls[0]["reasoning_effort"] == "none"
+
+
+def test_ollama_gets_a_context_window_and_long_prompts_are_refused():
+    fake = FakeCompletion(VALID)
+    llm = LLM(model="ollama_chat/m", completion=fake, num_ctx=1000, count_tokens=lambda **_: 700)
+    llm.ask("s", "u", Facts)
+    assert fake.calls[0]["num_ctx"] == 1000
+
+    too_long = LLM(
+        model="ollama_chat/m", completion=fake, num_ctx=1000, count_tokens=lambda **_: 800
+    )
+    with pytest.raises(PromptTooLong, match="800 prompt tokens"):
+        too_long.ask("s", "u", Facts)
+
+
+def test_hosted_models_get_no_ollama_options():
+    llm, fake = make_llm(VALID, num_ctx=1000)
+    llm.ask("s", "u", Facts)
+    assert "num_ctx" not in fake.calls[0]
 
 
 def test_code_fences_are_stripped():

@@ -27,6 +27,10 @@ LLM_FALLBACKS = [m for m in os.environ.get("LLM_FALLBACKS", "").split(",") if m]
 # "none" turns off the hidden reasoning of thinking models: measured on qwen3.5:9b,
 # 115 s and 1549 output tokens with it, 1.5 s and 23 tokens without, same JSON.
 LLM_REASONING_EFFORT = os.environ.get("LLM_REASONING_EFFORT") or None
+# Ollama's context window. Its default (4096) silently drops the start of longer prompts:
+# measured, a 13.9k-token prompt at num_ctx=2048 was read as 1027 tokens, with no error.
+LLM_NUM_CTX = int(os.environ.get("LLM_NUM_CTX") or 0) or None
+PROMPT_SHARE = 0.75  # of the window; the rest is for the reply and tokenizer differences
 SCHEMA_RETRIES = 1  # network errors are retried by LiteLLM itself (num_retries)
 
 T = TypeVar("T", bound=BaseModel)
@@ -35,6 +39,10 @@ FENCE = re.compile(r"^```(?:json)?\s*|\s*```$")
 
 class SchemaError(RuntimeError):
     """The model did not produce a reply matching the schema."""
+
+
+class PromptTooLong(RuntimeError):
+    """The prompt would not fit the model's context window and would be cut silently."""
 
 
 class StructuredLLM(Protocol):
@@ -73,13 +81,17 @@ class LLM:
         model: str = LLM_MODEL,
         fallbacks: list[str] | None = None,
         reasoning_effort: str | None = LLM_REASONING_EFFORT,
+        num_ctx: int | None = LLM_NUM_CTX,
+        count_tokens: Callable = litellm.token_counter,
         completion: Callable = litellm.completion,
         num_retries: int = 2,
-        timeout: float = 120,
+        timeout: float = 300,  # local models on a laptop: a long prompt can take 2-3 minutes
     ):
         self.model = model
         self.fallbacks = LLM_FALLBACKS if fallbacks is None else fallbacks
         self.reasoning_effort = reasoning_effort
+        self.num_ctx = num_ctx
+        self.count_tokens = count_tokens
         self.completion = completion
         self.num_retries = num_retries
         self.timeout = timeout
@@ -111,6 +123,14 @@ class LLM:
 
     def complete(self, messages: list[dict], schema: type[BaseModel]) -> str:
         options = {}
+        if self.num_ctx and self.model.startswith("ollama"):
+            tokens = self.count_tokens(model=self.model, messages=messages)
+            if tokens > self.num_ctx * PROMPT_SHARE:
+                raise PromptTooLong(
+                    f"about {tokens} prompt tokens for a {self.num_ctx}-token window: "
+                    "raise LLM_NUM_CTX or send less text"
+                )
+            options["num_ctx"] = self.num_ctx
         if self.fallbacks:
             options["fallbacks"] = self.fallbacks
         if self.reasoning_effort:
