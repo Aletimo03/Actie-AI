@@ -49,6 +49,7 @@ def make_llm(*replies: str, **kwargs) -> tuple[LLM, FakeCompletion]:
     """An LLM over fake replies; never the LLM_CACHE_DIR of .env, unless a test asks."""
     fake = FakeCompletion(*replies)
     kwargs.setdefault("cache_dir", None)
+    kwargs.setdefault("fallbacks", [])
     return LLM(model="test/model", completion=fake, **kwargs), fake
 
 
@@ -60,6 +61,7 @@ def test_valid_reply_is_parsed_into_the_schema():
     assert call["model"] == "test/model"
     assert call["response_format"] is Facts
     assert call["temperature"] == 0
+    assert call["max_tokens"] == 4096  # providers like Cloudflare otherwise stop at 256
     assert [m["role"] for m in call["messages"]] == ["system", "user"]
     assert call["messages"][0]["content"] == with_schema("Extract facts.", Facts)
 
@@ -98,11 +100,13 @@ def test_optional_settings_are_passed_only_when_set():
     llm, fake = make_llm(VALID, VALID, fallbacks=[], reasoning_effort=None)
     llm.ask("s", "u", Facts)
     assert "fallbacks" not in fake.calls[0] and "reasoning_effort" not in fake.calls[0]
+    assert "allowed_openai_params" not in fake.calls[0]
 
     llm, fake = make_llm(VALID, fallbacks=["groq/other"], reasoning_effort="none")
     llm.ask("s", "u", Facts)
-    assert fake.calls[0]["fallbacks"] == ["groq/other"]
+    assert "fallbacks" not in fake.calls[0]  # our own, on daily caps only: see below
     assert fake.calls[0]["reasoning_effort"] == "none"
+    assert fake.calls[0]["allowed_openai_params"] == ["reasoning_effort"]
 
 
 def test_ollama_gets_a_context_window_and_long_prompts_are_refused():
@@ -141,6 +145,8 @@ def limited(wait: str) -> litellm.RateLimitError:
 
 def test_retry_after_reads_the_providers_wait():
     assert retry_after(limited("7.0275s")) == 7.5275
+    assert retry_after(limited("21m15.2s")) == 1275.7
+    assert retry_after(limited("3h2m")) == 3 * 3600 + 120.5  # a daily cap, not 10 s
     assert retry_after(limited("1m2.5s")) == 63.0
     assert retry_after(RuntimeError("no hint")) == 10.0
 
@@ -148,7 +154,7 @@ def test_retry_after_reads_the_providers_wait():
 def test_rate_limits_are_waited_out_then_retried():
     waits = []
     fake = FakeCompletion(limited("7s"), limited("2.5s"), VALID)
-    llm = LLM(model="groq/m", completion=fake, cache_dir=None, sleep=waits.append)
+    llm = LLM(model="groq/m", completion=fake, cache_dir=None, fallbacks=[], sleep=waits.append)
     assert llm.ask("s", "u", Facts).domain == "education"
     assert waits == [7.5, 3.0] and llm.usage.rate_limit_wait == 10.5
     assert llm.usage.calls == 1  # only the answered call counts
@@ -156,10 +162,46 @@ def test_rate_limits_are_waited_out_then_retried():
 
 def test_rate_limit_waits_stop_at_the_budget():
     fake = FakeCompletion(*[limited("59s")] * 10)
-    llm = LLM(model="groq/m", completion=fake, cache_dir=None, sleep=lambda _: None)
+    llm = LLM(model="groq/m", completion=fake, cache_dir=None, fallbacks=[], sleep=lambda _: None)
     with pytest.raises(litellm.RateLimitError):
         llm.ask("s", "u", Facts)
     assert len(fake.calls) == RATE_LIMIT_BUDGET // 60 + 1
+
+
+def test_a_daily_cap_moves_to_the_fallback_for_the_rest_of_the_run():
+    waits = []
+    fake = FakeCompletion(limited("21m15.2s"), VALID, VALID)
+    llm = LLM(
+        model="groq/m", fallbacks=["cloudflare/m"], completion=fake, cache_dir=None,
+        sleep=waits.append,
+    )  # fmt: skip
+    llm.ask("s", "u", Facts)
+    llm.ask("s", "u2", Facts)
+    assert [call["model"] for call in fake.calls] == ["groq/m", "cloudflare/m", "cloudflare/m"]
+    assert waits == [] and llm.usage.fallback_calls == 2
+
+
+def test_a_per_minute_limit_waits_on_the_same_model_instead_of_falling_back():
+    waits = []
+    fake = FakeCompletion(limited("7s"), VALID)
+    llm = LLM(
+        model="groq/m", fallbacks=["cloudflare/m"], completion=fake, cache_dir=None,
+        sleep=waits.append,
+    )  # fmt: skip
+    llm.ask("s", "u", Facts)
+    assert [call["model"] for call in fake.calls] == ["groq/m", "groq/m"] and waits == [7.5]
+    assert llm.usage.fallback_calls == 0
+
+
+def test_when_every_model_is_capped_the_rate_limit_is_raised():
+    fake = FakeCompletion(limited("21m"), limited("3h2m"))
+    llm = LLM(
+        model="groq/m", fallbacks=["cloudflare/m"], completion=fake, cache_dir=None,
+        sleep=lambda _: None,
+    )  # fmt: skip
+    with pytest.raises(litellm.RateLimitError):
+        llm.ask("s", "u", Facts)
+    assert [call["model"] for call in fake.calls] == ["groq/m", "cloudflare/m"]
 
 
 def test_an_identical_request_is_answered_from_the_cache(tmp_path):

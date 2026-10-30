@@ -12,6 +12,12 @@ request is answered from the file for 0 tokens, any change to the prompt,
 schema or model is a new request. Off by default, and never on the live
 site, where it would store users' descriptions.
 
+Rate limits: a provider's 429 says how long to wait. A short wait (a
+per-minute limit) is waited out on the same model; a wait beyond
+RATE_LIMIT_BUDGET (a daily cap) moves to the next model in LLM_FALLBACKS
+for the rest of the run. LiteLLM's own fallbacks are not used: they move on
+any error, so every per-minute limit would spend a fallback's small budget.
+
 The model is a LiteLLM string read from the environment, so moving from the
 local Ollama to Groq is a .env change, not a code change:
     LLM_MODEL=ollama_chat/gemma4:12b     (development, local)
@@ -39,11 +45,15 @@ LLM_REASONING_EFFORT = os.environ.get("LLM_REASONING_EFFORT") or None
 # Ollama's context window. Its default (4096) silently drops the start of longer prompts:
 # measured, a 13.9k-token prompt at num_ctx=2048 was read as 1027 tokens, with no error.
 LLM_NUM_CTX = int(os.environ.get("LLM_NUM_CTX") or 0) or None
+# A ceiling on each reply, hidden reasoning included. Some providers default very low:
+# Cloudflare Workers AI stops at 256 tokens, which cut gpt-oss mid-JSON (finish_reason
+# "length") or left it nothing after reasoning. Only the tokens produced are billed.
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS") or 4096)
 PROMPT_SHARE = 0.75  # of the window; the rest is for the reply and tokenizer differences
 # Free tiers limit tokens per minute (Groq: 8000), and LiteLLM's own retries come back
 # before the window frees up. On a 429 we wait as long as the provider asks, up to this.
 RATE_LIMIT_BUDGET = 180  # seconds of waiting per call before giving up
-RETRY_IN = re.compile(r"try again in (?:(\d+)m)?([\d.]+)s")
+RETRY_IN = re.compile(r"try again in (?=\d)(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?")
 # Free tiers also cap tokens per day (Groq: 200k), mostly spent re-running the same evals.
 LLM_CACHE_DIR = os.environ.get("LLM_CACHE_DIR") or None
 SCHEMA_RETRIES = 1  # network errors are retried by LiteLLM itself (num_retries)
@@ -73,6 +83,7 @@ class Usage:
     completion_tokens: int = 0
     rate_limit_wait: float = 0.0  # seconds spent waiting for the provider's rate limit
     cache_hits: int = 0  # replies read from LLM_CACHE_DIR instead of the API
+    fallback_calls: int = 0  # answered by a fallback model after a daily cap
 
 
 def with_schema(system: str, schema: type[BaseModel]) -> str:
@@ -88,12 +99,12 @@ def with_schema(system: str, schema: type[BaseModel]) -> str:
 
 
 def retry_after(error: Exception) -> float:
-    """Seconds the provider asked us to wait ("try again in 1m2.5s"), plus a margin."""
+    """Seconds the provider asked us to wait ("try again in 1h2m3.5s"), plus a margin."""
     match = RETRY_IN.search(str(error))
-    if not match:
+    if not match or not any(match.groups()):
         return 10.0
-    minutes, seconds = match.groups()
-    return int(minutes or 0) * 60 + float(seconds) + 0.5
+    hours, minutes, seconds = match.groups()
+    return int(hours or 0) * 3600 + int(minutes or 0) * 60 + float(seconds or 0) + 0.5
 
 
 def strip_fences(text: str) -> str:
@@ -108,6 +119,7 @@ class LLM:
         fallbacks: list[str] | None = None,
         reasoning_effort: str | None = LLM_REASONING_EFFORT,
         num_ctx: int | None = LLM_NUM_CTX,
+        max_tokens: int = LLM_MAX_TOKENS,
         count_tokens: Callable = litellm.token_counter,
         sleep: Callable[[float], None] = time.sleep,
         completion: Callable = litellm.completion,
@@ -117,8 +129,10 @@ class LLM:
     ):
         self.model = model
         self.fallbacks = LLM_FALLBACKS if fallbacks is None else fallbacks
+        self.active = 0  # index into [model, *fallbacks]: moves on at a daily cap, never back
         self.reasoning_effort = reasoning_effort
         self.num_ctx = num_ctx
+        self.max_tokens = max_tokens
         self.count_tokens = count_tokens
         self.sleep = sleep
         self.completion = completion
@@ -177,40 +191,52 @@ class LLM:
         return self.cache_dir / f"{key}.json"
 
     def complete(self, messages: list[dict], schema: type[BaseModel]) -> str:
+        models = [self.model, *self.fallbacks]
+        waited = 0.0
+        while True:
+            model = models[self.active]
+            try:
+                response = self.completion(
+                    model=model,
+                    messages=messages,
+                    response_format=schema,
+                    temperature=0,  # same input, (nearly) same verdict
+                    max_tokens=self.max_tokens,
+                    num_retries=self.num_retries,
+                    timeout=self.timeout,
+                    **self.options(model, messages),
+                )
+                break
+            except litellm.RateLimitError as error:
+                wait = retry_after(error)
+                if waited + wait <= RATE_LIMIT_BUDGET:
+                    self.usage.rate_limit_wait += wait
+                    waited += wait
+                    self.sleep(wait)
+                elif self.active + 1 < len(models):
+                    self.active += 1  # a daily cap: the next model, for the rest of the run
+                    waited = 0.0
+                else:
+                    raise
+        self.usage.calls += 1
+        self.usage.fallback_calls += self.active > 0
+        self.usage.prompt_tokens += response.usage.prompt_tokens
+        self.usage.completion_tokens += response.usage.completion_tokens
+        return response.choices[0].message.content or ""
+
+    def options(self, model: str, messages: list[dict]) -> dict:
+        """Provider-specific settings for one call."""
         options = {}
-        if self.num_ctx and self.model.startswith("ollama"):
-            tokens = self.count_tokens(model=self.model, messages=messages)
+        if self.num_ctx and model.startswith("ollama"):
+            tokens = self.count_tokens(model=model, messages=messages)
             if tokens > self.num_ctx * PROMPT_SHARE:
                 raise PromptTooLong(
                     f"about {tokens} prompt tokens for a {self.num_ctx}-token window: "
                     "raise LLM_NUM_CTX or send less text"
                 )
             options["num_ctx"] = self.num_ctx
-        if self.fallbacks:
-            options["fallbacks"] = self.fallbacks
         if self.reasoning_effort:
             options["reasoning_effort"] = self.reasoning_effort
-        waited = 0.0
-        while True:
-            try:
-                response = self.completion(
-                    model=self.model,
-                    messages=messages,
-                    response_format=schema,
-                    temperature=0,  # same input, (nearly) same verdict
-                    num_retries=self.num_retries,
-                    timeout=self.timeout,
-                    **options,
-                )
-                break
-            except litellm.RateLimitError as error:
-                wait = retry_after(error)
-                if waited + wait > RATE_LIMIT_BUDGET:
-                    raise
-                self.usage.rate_limit_wait += wait
-                waited += wait
-                self.sleep(wait)
-        self.usage.calls += 1
-        self.usage.prompt_tokens += response.usage.prompt_tokens
-        self.usage.completion_tokens += response.usage.completion_tokens
-        return response.choices[0].message.content or ""
+            # LiteLLM's table says Cloudflare rejects it; its OpenAI-style endpoint takes it.
+            options["allowed_openai_params"] = ["reasoning_effort"]
+        return options
