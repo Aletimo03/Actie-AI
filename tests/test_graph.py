@@ -1,8 +1,18 @@
+import logging
+
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 
 from backend.app.agent.facts import Facts
-from backend.app.agent.graph import MAX_ROUNDS, after_facts, after_prohibited, build_graph
+from backend.app.agent.graph import (
+    MAX_ROUNDS,
+    SERDE,
+    after_facts,
+    after_high_risk,
+    after_prohibited,
+    build_graph,
+)
+from backend.app.agent.high_risk import ExceptionFinding, HighRiskCheck
 from backend.app.agent.prohibited import PRACTICES, ProhibitedCheck, decide
 from backend.app.retrieval.contexts import Context
 
@@ -16,6 +26,12 @@ BANNED = ProhibitedCheck(
 UNSURE = ProhibitedCheck(
     **dict.fromkeys(PRACTICES, NO)
     | {"f": {"applies": "uncertain", "reason": "?", "question": "Is it for medical reasons?"}}
+)
+LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO)
+HIGH = HighRiskCheck(
+    annex_i=NO,
+    annex_iii={"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "recruitment"},
+    exception=NO,
 )
 
 
@@ -37,7 +53,7 @@ def fetch(ids):
 
 def run(llm, *resumes, lang="en"):
     """Start an assessment, answer each interrupt in turn, return every step's output."""
-    graph = build_graph(llm, fetch, InMemorySaver())
+    graph = build_graph(llm, fetch, InMemorySaver(serde=SERDE))
     config = {"configurable": {"thread_id": "t1"}}
     outputs = [graph.invoke({"description": "A system.", "lang": lang}, config)]
     for answers in resumes:
@@ -45,22 +61,35 @@ def run(llm, *resumes, lang="en"):
     return outputs
 
 
-def test_known_facts_and_no_ban_go_straight_to_the_report():
-    llm = ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[CLEAR])
+def steps(llm):
+    return [name for name, _ in llm.prompts]
+
+
+def test_no_ban_and_no_annex_match_is_not_high_risk():
+    llm = ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
     [state] = run(llm)
-    assert state["report"]["risk"] == "not_prohibited"
+    assert state["report"]["risk"] == "not_high_risk"
     assert state["report"]["citations"] == [] and state["report"]["assumed_unknown"] == []
-    assert [name for name, _ in llm.prompts] == ["Facts", "ProhibitedCheck"]
+    assert steps(llm) == ["Facts", "ProhibitedCheck", "HighRiskCheck"]
 
 
-def test_a_ban_ends_with_a_cited_report():
-    [state] = run(ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[BANNED]))
+def test_an_annex_iii_match_is_high_risk_with_its_citation():
+    [state] = run(ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH]))
+    assert state["report"]["risk"] == "high"
+    assert state["report"]["high_risk_basis"] == ["en_annex3_4_a"]
+    assert [c["chunk_id"] for c in state["report"]["citations"]] == ["en_annex3_4_a"]
+
+
+def test_a_ban_skips_the_high_risk_check():
+    llm = ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[BANNED])
+    [state] = run(llm)
     assert state["report"]["risk"] == "prohibited" and state["report"]["banned"] == ["f"]
     assert state["report"]["citations"][0]["chunk_id"] == "en_art5_p1_f"
+    assert steps(llm) == ["Facts", "ProhibitedCheck"]
 
 
 def test_missing_facts_pause_for_questions_and_answers_reach_the_prompt():
-    llm = ScriptedLLM(Facts=[UNKNOWN, KNOWN], ProhibitedCheck=[CLEAR])
+    llm = ScriptedLLM(Facts=[UNKNOWN, KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
     paused, done = run(llm, {"purpose": "It ranks CVs", "role": ""}, lang="it")
     [interruption] = paused["__interrupt__"]
     asked = interruption.value["questions"]
@@ -69,11 +98,13 @@ def test_missing_facts_pause_for_questions_and_answers_reach_the_prompt():
     second_extract = llm.prompts[1][1]
     assert "- A cosa serve il sistema, e cosa produce o decide?: It ranks CVs" in second_extract
     assert "sviluppato" not in second_extract  # empty answers are dropped
-    assert done["report"]["risk"] == "not_prohibited"
+    assert done["report"]["risk"] == "not_high_risk"
 
 
 def test_after_max_rounds_the_report_states_its_assumptions():
-    llm = ScriptedLLM(Facts=[UNKNOWN] * (MAX_ROUNDS + 1), ProhibitedCheck=[CLEAR])
+    llm = ScriptedLLM(
+        Facts=[UNKNOWN] * (MAX_ROUNDS + 1), ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW]
+    )
     *_, done = run(llm, *[{"purpose": "?"}] * MAX_ROUNDS)
     assert done["rounds"] == MAX_ROUNDS
     assert done["report"]["assumed_unknown"] == ["purpose", "domain", "affected_people", "role"]
@@ -85,8 +116,28 @@ def test_an_uncertain_practice_is_asked_then_everything_is_checked_again():
     assert paused["__interrupt__"][0].value["questions"] == [
         {"id": "art5_f", "text": "Is it for medical reasons?"}
     ]
-    assert [name for name, _ in llm.prompts] == ["Facts", "ProhibitedCheck"] * 2
+    assert steps(llm) == ["Facts", "ProhibitedCheck"] * 2
     assert done["report"]["risk"] == "prohibited" and done["report"]["uncertain"] == []
+
+
+def test_an_open_profiling_question_is_asked_and_counts_as_high_risk_meanwhile():
+    narrow = ExceptionFinding(applies="yes", condition="a", reason="Narrow task.")
+    excepted = HIGH.model_copy(update={"exception": narrow})
+    rounds = MAX_ROUNDS + 1
+    llm = ScriptedLLM(
+        Facts=[KNOWN] * rounds, ProhibitedCheck=[CLEAR] * rounds, HighRiskCheck=[excepted] * rounds
+    )
+    skipped = {"art6_profiling": ""}  # the user leaves the question blank every time
+    paused, *_, done = run(llm, *[skipped] * MAX_ROUNDS)
+    assert paused["__interrupt__"][0].value["questions"][0]["id"] == "art6_profiling"
+    assert done["report"]["risk"] == "high" and done["report"]["uncertain"] == ["profiling"]
+
+
+def test_checkpoints_rebuild_only_registered_types(caplog):
+    llm = ScriptedLLM(Facts=[UNKNOWN, KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
+    with caplog.at_level(logging.WARNING):
+        run(llm, {"purpose": "It ranks CVs"})
+    assert "unregistered type" not in caplog.text
 
 
 def test_edges_are_plain_functions_of_the_state():
@@ -97,4 +148,6 @@ def test_edges_are_plain_functions_of_the_state():
     assert after_prohibited({"prohibited": decide(BANNED, "en"), "questions": []}) == "report"
     unsure = {"prohibited": decide(UNSURE, "en"), "questions": question}
     assert after_prohibited(unsure) == "ask_user"
-    assert after_prohibited(unsure | {"rounds": MAX_ROUNDS}) == "report"
+    assert after_prohibited(unsure | {"rounds": MAX_ROUNDS}) == "check_high_risk"
+    assert after_high_risk({"questions": question}) == "ask_user"
+    assert after_high_risk({"questions": []}) == "report"
