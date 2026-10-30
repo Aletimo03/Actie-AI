@@ -8,10 +8,11 @@ output.
 
 The model is a LiteLLM string read from the environment, so moving from the
 local Ollama to Groq is a .env change, not a code change:
-    LLM_MODEL=ollama_chat/qwen3.5:9b     (development, local)
+    LLM_MODEL=ollama_chat/gemma4:12b     (development, local)
     LLM_MODEL=groq/<model>               (live site, see docs on the provider choice)
 """
 
+import json
 import os
 import re
 from collections.abc import Callable
@@ -21,7 +22,7 @@ from typing import Protocol, TypeVar
 import litellm
 from pydantic import BaseModel, ValidationError
 
-LLM_MODEL = os.environ.get("LLM_MODEL", "ollama_chat/qwen3.5:9b")
+LLM_MODEL = os.environ.get("LLM_MODEL", "ollama_chat/gemma4:12b")
 LLM_FALLBACKS = [m for m in os.environ.get("LLM_FALLBACKS", "").split(",") if m]
 # "none" turns off the hidden reasoning of thinking models: measured on qwen3.5:9b,
 # 115 s and 1549 output tokens with it, 1.5 s and 23 tokens without, same JSON.
@@ -49,6 +50,18 @@ class Usage:
     completion_tokens: int = 0
 
 
+def with_schema(system: str, schema: type[BaseModel]) -> str:
+    """The system prompt plus the schema, field descriptions included.
+
+    JSON mode only constrains which tokens the model may produce: Ollama never
+    shows the schema to the model, so without this the field descriptions are
+    invisible (measured: the facts eval sent the same 6859 prompt tokens before
+    and after a description change, and scored the same).
+    """
+    fields = json.dumps(schema.model_json_schema())
+    return f"{system}\n\nReply with JSON matching this schema:\n{fields}"
+
+
 def strip_fences(text: str) -> str:
     """Some models wrap JSON in ```json fences even in JSON mode."""
     return FENCE.sub("", text.strip())
@@ -74,7 +87,10 @@ class LLM:
 
     def ask(self, system: str, user: str, schema: type[T]) -> T:
         """One structured answer: the reply parsed into `schema`."""
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        messages = [
+            {"role": "system", "content": with_schema(system, schema)},
+            {"role": "user", "content": user},
+        ]
         for _ in range(SCHEMA_RETRIES + 1):
             content = self.complete(messages, schema)
             try:

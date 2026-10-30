@@ -3,9 +3,9 @@ from types import SimpleNamespace
 from typing import Literal
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from backend.app.llm import LLM, SchemaError, strip_fences
+from backend.app.llm import LLM, SchemaError, strip_fences, with_schema
 
 
 class Facts(BaseModel):
@@ -48,6 +48,16 @@ def test_valid_reply_is_parsed_into_the_schema():
     assert call["response_format"] is Facts
     assert call["temperature"] == 0
     assert [m["role"] for m in call["messages"]] == ["system", "user"]
+    assert call["messages"][0]["content"] == with_schema("Extract facts.", Facts)
+
+
+def test_schema_with_field_descriptions_is_in_the_system_prompt():
+    class Described(BaseModel):
+        role: str | None = Field(None, description="provider or deployer")
+
+    system = with_schema("Rules.", Described)
+    assert system.startswith("Rules.\n\nReply with JSON matching this schema:\n{")
+    assert "provider or deployer" in system
 
 
 def test_invalid_reply_is_retried_once_with_the_error():
