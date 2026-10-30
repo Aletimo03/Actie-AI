@@ -51,6 +51,7 @@ class Finding(BaseModel):
 # One required field per practice, so the model cannot skip one.
 ProhibitedCheck = create_model(
     "ProhibitedCheck",
+    __module__=__name__,  # importable by name, so checkpoints can be loaded again
     **{label: (Finding, Field(description=name)) for label, name in PRACTICES.items()},
 )
 
