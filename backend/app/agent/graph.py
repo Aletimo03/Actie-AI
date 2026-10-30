@@ -10,6 +10,9 @@
            check_high_risk --(uncertain)--> ask_user -> extract_facts
                   |
                   v
+           check_transparency --(uncertain)--> ask_user -> extract_facts
+                  |
+                  v
                report -> END
 
 The LLM fills schemas inside the nodes; the edges are plain functions of the
@@ -44,6 +47,12 @@ from backend.app.agent.prohibited import (
     ProhibitedResult,
     check_prohibited,
 )
+from backend.app.agent.transparency import (
+    Duty,
+    TransparencyCheck,
+    TransparencyResult,
+    check_transparency,
+)
 from backend.app.llm import StructuredLLM
 from backend.app.retrieval.contexts import Context
 
@@ -61,6 +70,9 @@ STATE_TYPES = [
         ExceptionFinding,
         HighRiskCheck,
         HighRiskResult,
+        TransparencyCheck,
+        TransparencyResult,
+        Duty,
     )
 ]
 SERDE = JsonPlusSerializer(allowed_msgpack_modules=STATE_TYPES)  # use for every checkpointer
@@ -107,6 +119,7 @@ class Assessment(TypedDict, total=False):
     facts: Facts
     prohibited: ProhibitedResult
     high_risk: HighRiskResult
+    transparency: TransparencyResult
     report: dict
 
 
@@ -125,22 +138,39 @@ def after_prohibited(state: Assessment) -> str:
 
 
 def after_high_risk(state: Assessment) -> str:
+    return "ask_user" if needs_answers(state) else "check_transparency"
+
+
+def after_transparency(state: Assessment) -> str:
     return "ask_user" if needs_answers(state) else "report"
 
 
+def risk_level(state: Assessment) -> str:
+    """prohibited > high > limited (transparency duties only) > minimal."""
+    if state["prohibited"].is_prohibited:
+        return "prohibited"
+    if state["high_risk"].is_high_risk:
+        return "high"
+    transparency = state["transparency"]
+    return "limited" if transparency.duties or transparency.others else "minimal"
+
+
 def report(state: Assessment) -> dict:
-    prohibited, high_risk = state["prohibited"], state.get("high_risk")
-    if prohibited.is_prohibited:
-        risk, results = "prohibited", [prohibited]
+    prohibited = state["prohibited"]
+    risk = risk_level(state)
+    if risk == "prohibited":
+        results, high_risk, transparency = [prohibited], None, None
     else:
-        risk = "high" if high_risk.is_high_risk else "not_high_risk"
-        results = [prohibited, high_risk]
+        high_risk, transparency = state["high_risk"], state["transparency"]
+        results = [prohibited, high_risk, transparency]
     return {
         "report": {
             "risk": risk,
             "banned": prohibited.banned,
-            "high_risk_basis": [] if prohibited.is_prohibited else high_risk.basis,
-            "exception": None if prohibited.is_prohibited else high_risk.exception,
+            "high_risk_basis": high_risk.basis if high_risk else [],
+            "exception": high_risk.exception if high_risk else None,
+            "transparency_duties": [vars(d) for d in transparency.duties] if transparency else [],
+            "other_role_duties": [vars(d) for d in transparency.others] if transparency else [],
             "uncertain": [name for r in results for name in r.uncertain],
             "assumed_unknown": missing_facts(state["facts"]),
             "citations": [c.model_dump() for r in results for c in r.citations],
@@ -172,6 +202,14 @@ def build_graph(llm: StructuredLLM, fetch: Callable[[list[str]], list[Context]],
         ]
         return {"high_risk": result, "questions": questions}
 
+    def check_transparency_node(state: Assessment) -> dict:
+        result = check_transparency(llm, fetch, state["description"], state["facts"], state["lang"])
+        questions = [
+            Question(id=f"art50_{name}", text=text)
+            for name, text in zip(result.uncertain, result.questions, strict=True)
+        ]
+        return {"transparency": result, "questions": questions}
+
     def ask_user(state: Assessment) -> dict:
         # On resume this node runs again from the top and interrupt() returns the answers,
         # so nothing before it may have side effects. To skip, resume with blank answers
@@ -190,13 +228,17 @@ def build_graph(llm: StructuredLLM, fetch: Callable[[list[str]], list[Context]],
     graph.add_node("ask_user", ask_user)
     graph.add_node("check_prohibited", check_prohibited_node)
     graph.add_node("check_high_risk", check_high_risk_node)
+    graph.add_node("check_transparency", check_transparency_node)
     graph.add_node("report", report)
     graph.add_edge(START, "extract_facts")
     graph.add_conditional_edges("extract_facts", after_facts, ["ask_user", "check_prohibited"])
     graph.add_conditional_edges(
         "check_prohibited", after_prohibited, ["ask_user", "check_high_risk", "report"]
     )
-    graph.add_conditional_edges("check_high_risk", after_high_risk, ["ask_user", "report"])
+    graph.add_conditional_edges(
+        "check_high_risk", after_high_risk, ["ask_user", "check_transparency"]
+    )
+    graph.add_conditional_edges("check_transparency", after_transparency, ["ask_user", "report"])
     graph.add_edge("ask_user", "extract_facts")
     graph.add_edge("report", END)
     return graph.compile(checkpointer=checkpointer)

@@ -10,10 +10,12 @@ from backend.app.agent.graph import (
     after_facts,
     after_high_risk,
     after_prohibited,
+    after_transparency,
     build_graph,
 )
 from backend.app.agent.high_risk import ExceptionFinding, HighRiskCheck
 from backend.app.agent.prohibited import PRACTICES, ProhibitedCheck, decide
+from backend.app.agent.transparency import RULES, TransparencyCheck
 from backend.app.retrieval.contexts import Context
 
 KNOWN = Facts(purpose="Rank CVs", domain="employment", affected_people="people", role="deployer")
@@ -28,6 +30,10 @@ UNSURE = ProhibitedCheck(
     | {"f": {"applies": "uncertain", "reason": "?", "question": "Is it for medical reasons?"}}
 )
 LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO)
+NONE = TransparencyCheck(**dict.fromkeys(RULES, NO))
+CHATBOT = TransparencyCheck(
+    **dict.fromkeys(RULES, NO) | {"interacts": {"applies": "yes", "reason": "Chats.", "quote": "q"}}
+)
 HIGH = HighRiskCheck(
     annex_i=NO,
     annex_iii={"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "recruitment"},
@@ -66,18 +72,51 @@ def steps(llm):
 
 
 def test_no_ban_and_no_annex_match_is_not_high_risk():
-    llm = ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
+    llm = ScriptedLLM(
+        Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW], TransparencyCheck=[NONE]
+    )
     [state] = run(llm)
-    assert state["report"]["risk"] == "not_high_risk"
+    assert state["report"]["risk"] == "minimal"
     assert state["report"]["citations"] == [] and state["report"]["assumed_unknown"] == []
-    assert steps(llm) == ["Facts", "ProhibitedCheck", "HighRiskCheck"]
+    assert steps(llm) == ["Facts", "ProhibitedCheck", "HighRiskCheck", "TransparencyCheck"]
 
 
 def test_an_annex_iii_match_is_high_risk_with_its_citation():
-    [state] = run(ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH]))
+    [state] = run(
+        ScriptedLLM(
+            Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH], TransparencyCheck=[NONE]
+        )
+    )
     assert state["report"]["risk"] == "high"
     assert state["report"]["high_risk_basis"] == ["en_annex3_4_a"]
     assert [c["chunk_id"] for c in state["report"]["citations"]] == ["en_annex3_4_a"]
+
+
+def test_transparency_duties_alone_make_a_limited_risk_system():
+    chatbot_maker = KNOWN.model_copy(update={"role": "provider"})
+    llm = ScriptedLLM(
+        Facts=[chatbot_maker],
+        ProhibitedCheck=[CLEAR],
+        HighRiskCheck=[LOW],
+        TransparencyCheck=[CHATBOT],
+    )
+    [state] = run(llm)
+    assert state["report"]["risk"] == "limited"
+    [duty] = state["report"]["transparency_duties"]
+    assert (duty["chunk_id"], duty["who"]) == ("en_art50_p1", "provider")
+    assert state["report"]["other_role_duties"] == []
+
+
+def test_high_risk_systems_also_get_their_transparency_duties():
+    llm = ScriptedLLM(
+        Facts=[KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[HIGH], TransparencyCheck=[CHATBOT]
+    )
+    [state] = run(llm)
+    assert state["report"]["risk"] == "high"
+    # KNOWN is a deployer: the chatbot disclosure is the provider's duty, shown for context
+    assert state["report"]["transparency_duties"] == []
+    assert state["report"]["other_role_duties"][0]["chunk_id"] == "en_art50_p1"
+    assert [c["chunk_id"] for c in state["report"]["citations"]] == ["en_annex3_4_a", "en_art50_p1"]
 
 
 def test_a_ban_skips_the_high_risk_check():
@@ -89,7 +128,12 @@ def test_a_ban_skips_the_high_risk_check():
 
 
 def test_missing_facts_pause_for_questions_and_answers_reach_the_prompt():
-    llm = ScriptedLLM(Facts=[UNKNOWN, KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
+    llm = ScriptedLLM(
+        Facts=[UNKNOWN, KNOWN],
+        ProhibitedCheck=[CLEAR],
+        HighRiskCheck=[LOW],
+        TransparencyCheck=[NONE],
+    )
     paused, done = run(llm, {"purpose": "It ranks CVs", "role": ""}, lang="it")
     [interruption] = paused["__interrupt__"]
     asked = interruption.value["questions"]
@@ -98,12 +142,15 @@ def test_missing_facts_pause_for_questions_and_answers_reach_the_prompt():
     second_extract = llm.prompts[1][1]
     assert "- A cosa serve il sistema, e cosa produce o decide?: It ranks CVs" in second_extract
     assert "sviluppato" not in second_extract  # empty answers are dropped
-    assert done["report"]["risk"] == "not_high_risk"
+    assert done["report"]["risk"] == "minimal"
 
 
 def test_after_max_rounds_the_report_states_its_assumptions():
     llm = ScriptedLLM(
-        Facts=[UNKNOWN] * (MAX_ROUNDS + 1), ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW]
+        Facts=[UNKNOWN] * (MAX_ROUNDS + 1),
+        ProhibitedCheck=[CLEAR],
+        HighRiskCheck=[LOW],
+        TransparencyCheck=[NONE],
     )
     *_, done = run(llm, *[{"purpose": "?"}] * MAX_ROUNDS)
     assert done["rounds"] == MAX_ROUNDS
@@ -125,7 +172,10 @@ def test_an_open_profiling_question_is_asked_and_counts_as_high_risk_meanwhile()
     excepted = HIGH.model_copy(update={"exception": narrow})
     rounds = MAX_ROUNDS + 1
     llm = ScriptedLLM(
-        Facts=[KNOWN] * rounds, ProhibitedCheck=[CLEAR] * rounds, HighRiskCheck=[excepted] * rounds
+        Facts=[KNOWN] * rounds,
+        ProhibitedCheck=[CLEAR] * rounds,
+        HighRiskCheck=[excepted] * rounds,
+        TransparencyCheck=[NONE] * rounds,
     )
     skipped = {"art6_profiling": ""}  # the user leaves the question blank every time
     paused, *_, done = run(llm, *[skipped] * MAX_ROUNDS)
@@ -134,7 +184,12 @@ def test_an_open_profiling_question_is_asked_and_counts_as_high_risk_meanwhile()
 
 
 def test_checkpoints_rebuild_only_registered_types(caplog):
-    llm = ScriptedLLM(Facts=[UNKNOWN, KNOWN], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW])
+    llm = ScriptedLLM(
+        Facts=[UNKNOWN, KNOWN],
+        ProhibitedCheck=[CLEAR],
+        HighRiskCheck=[LOW],
+        TransparencyCheck=[NONE],
+    )
     with caplog.at_level(logging.WARNING):
         run(llm, {"purpose": "It ranks CVs"})
     assert "unregistered type" not in caplog.text
@@ -150,4 +205,6 @@ def test_edges_are_plain_functions_of_the_state():
     assert after_prohibited(unsure) == "ask_user"
     assert after_prohibited(unsure | {"rounds": MAX_ROUNDS}) == "check_high_risk"
     assert after_high_risk({"questions": question}) == "ask_user"
-    assert after_high_risk({"questions": []}) == "report"
+    assert after_high_risk({"questions": []}) == "check_transparency"
+    assert after_transparency({"questions": question}) == "ask_user"
+    assert after_transparency({"questions": []}) == "report"
