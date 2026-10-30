@@ -62,7 +62,10 @@ class Facts(BaseModel):
     real_time: bool | None = Field(None, description="Biometric identification done live")
     infers_emotions: bool | None = Field(None, description="Infers emotions or intentions")
     profiles_people: bool | None = Field(
-        None, description="Evaluates or predicts personal aspects of individuals"
+        None,
+        description="Profiling (GDPR Art. 4(4)): evaluates, scores, ranks or predicts "
+        "individuals' work performance, economic situation, reliability, behaviour, "
+        "preferences, interests, health or location",
     )
     interacts_with_people: bool | None = Field(None, description="Talks to people, e.g. a chatbot")
     generates_content: bool | None = Field(
