@@ -111,7 +111,8 @@ def main() -> None:
     report(args.model, result, time.monotonic() - started)
     usage = llm.usage
     print(f"  tokens: {usage.prompt_tokens} in, {usage.completion_tokens} out, {usage.calls} "
-          f"calls, {usage.rate_limit_wait:.0f} s waiting for rate limits")  # fmt: skip
+          f"calls, {usage.cache_hits} from cache, {usage.rate_limit_wait:.0f} s waiting for "
+          "rate limits")  # fmt: skip
 
 
 if __name__ == "__main__":

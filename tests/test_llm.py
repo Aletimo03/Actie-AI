@@ -46,7 +46,9 @@ class FakeCompletion:
 
 
 def make_llm(*replies: str, **kwargs) -> tuple[LLM, FakeCompletion]:
+    """An LLM over fake replies; never the LLM_CACHE_DIR of .env, unless a test asks."""
     fake = FakeCompletion(*replies)
+    kwargs.setdefault("cache_dir", None)
     return LLM(model="test/model", completion=fake, **kwargs), fake
 
 
@@ -105,12 +107,22 @@ def test_optional_settings_are_passed_only_when_set():
 
 def test_ollama_gets_a_context_window_and_long_prompts_are_refused():
     fake = FakeCompletion(VALID)
-    llm = LLM(model="ollama_chat/m", completion=fake, num_ctx=1000, count_tokens=lambda **_: 700)
+    llm = LLM(
+        model="ollama_chat/m",
+        completion=fake,
+        cache_dir=None,
+        num_ctx=1000,
+        count_tokens=lambda **_: 700,
+    )
     llm.ask("s", "u", Facts)
     assert fake.calls[0]["num_ctx"] == 1000
 
     too_long = LLM(
-        model="ollama_chat/m", completion=fake, num_ctx=1000, count_tokens=lambda **_: 800
+        model="ollama_chat/m",
+        completion=fake,
+        cache_dir=None,
+        num_ctx=1000,
+        count_tokens=lambda **_: 800,
     )
     with pytest.raises(PromptTooLong, match="800 prompt tokens"):
         too_long.ask("s", "u", Facts)
@@ -136,7 +148,7 @@ def test_retry_after_reads_the_providers_wait():
 def test_rate_limits_are_waited_out_then_retried():
     waits = []
     fake = FakeCompletion(limited("7s"), limited("2.5s"), VALID)
-    llm = LLM(model="groq/m", completion=fake, sleep=waits.append)
+    llm = LLM(model="groq/m", completion=fake, cache_dir=None, sleep=waits.append)
     assert llm.ask("s", "u", Facts).domain == "education"
     assert waits == [7.5, 3.0] and llm.usage.rate_limit_wait == 10.5
     assert llm.usage.calls == 1  # only the answered call counts
@@ -144,10 +156,39 @@ def test_rate_limits_are_waited_out_then_retried():
 
 def test_rate_limit_waits_stop_at_the_budget():
     fake = FakeCompletion(*[limited("59s")] * 10)
-    llm = LLM(model="groq/m", completion=fake, sleep=lambda _: None)
+    llm = LLM(model="groq/m", completion=fake, cache_dir=None, sleep=lambda _: None)
     with pytest.raises(litellm.RateLimitError):
         llm.ask("s", "u", Facts)
     assert len(fake.calls) == RATE_LIMIT_BUDGET // 60 + 1
+
+
+def test_an_identical_request_is_answered_from_the_cache(tmp_path):
+    first, fake = make_llm(VALID, cache_dir=tmp_path)
+    reply = first.ask("Extract facts.", "A webcam app...", Facts)
+    second, unused = make_llm(cache_dir=tmp_path)  # a new process: no replies left to give
+    assert second.ask("Extract facts.", "A webcam app...", Facts) == reply
+    assert (len(fake.calls), len(unused.calls), second.usage.cache_hits) == (1, 0, 1)
+    assert second.usage.prompt_tokens == 0
+
+
+def test_any_change_to_the_request_misses_the_cache(tmp_path):
+    llm, fake = make_llm(VALID, VALID, VALID, cache_dir=tmp_path)
+    llm.ask("Extract facts.", "A webcam app...", Facts)
+    llm.ask("Extract facts.", "A webcam app!", Facts)  # other prompt
+    llm.model = "test/other"
+    llm.ask("Extract facts.", "A webcam app...", Facts)  # other model
+    assert (len(fake.calls), llm.usage.cache_hits, len(list(tmp_path.iterdir()))) == (3, 0, 3)
+
+
+def test_only_a_valid_reply_is_cached(tmp_path):
+    llm, fake = make_llm(INVALID, VALID, cache_dir=tmp_path)
+    assert llm.ask("s", "u", Facts).risk == "prohibited"
+    [stored] = tmp_path.iterdir()
+    assert Facts.model_validate_json(stored.read_text()) == Facts.model_validate_json(VALID)
+    failing, _ = make_llm(INVALID, INVALID, cache_dir=tmp_path / "other")
+    with pytest.raises(SchemaError):
+        failing.ask("s", "u", Facts)
+    assert not (tmp_path / "other").exists()
 
 
 def test_code_fences_are_stripped():

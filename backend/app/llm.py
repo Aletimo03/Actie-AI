@@ -6,18 +6,26 @@ that still doesn't validate is sent back once together with the validation
 error; a second failure raises SchemaError, so a node never sees half-parsed
 output.
 
+In development, LLM_CACHE_DIR keeps every validated reply on disk under a
+hash of the exact request (model, messages, schema, settings): an identical
+request is answered from the file for 0 tokens, any change to the prompt,
+schema or model is a new request. Off by default, and never on the live
+site, where it would store users' descriptions.
+
 The model is a LiteLLM string read from the environment, so moving from the
 local Ollama to Groq is a .env change, not a code change:
     LLM_MODEL=ollama_chat/gemma4:12b     (development, local)
     LLM_MODEL=groq/<model>               (live site, see docs on the provider choice)
 """
 
+import hashlib
 import json
 import os
 import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol, TypeVar
 
 import litellm
@@ -36,6 +44,8 @@ PROMPT_SHARE = 0.75  # of the window; the rest is for the reply and tokenizer di
 # before the window frees up. On a 429 we wait as long as the provider asks, up to this.
 RATE_LIMIT_BUDGET = 180  # seconds of waiting per call before giving up
 RETRY_IN = re.compile(r"try again in (?:(\d+)m)?([\d.]+)s")
+# Free tiers also cap tokens per day (Groq: 200k), mostly spent re-running the same evals.
+LLM_CACHE_DIR = os.environ.get("LLM_CACHE_DIR") or None
 SCHEMA_RETRIES = 1  # network errors are retried by LiteLLM itself (num_retries)
 
 T = TypeVar("T", bound=BaseModel)
@@ -62,6 +72,7 @@ class Usage:
     prompt_tokens: int = 0
     completion_tokens: int = 0
     rate_limit_wait: float = 0.0  # seconds spent waiting for the provider's rate limit
+    cache_hits: int = 0  # replies read from LLM_CACHE_DIR instead of the API
 
 
 def with_schema(system: str, schema: type[BaseModel]) -> str:
@@ -102,6 +113,7 @@ class LLM:
         completion: Callable = litellm.completion,
         num_retries: int = 2,
         timeout: float = 300,  # local models on a laptop: a long prompt can take 2-3 minutes
+        cache_dir: str | Path | None = LLM_CACHE_DIR,
     ):
         self.model = model
         self.fallbacks = LLM_FALLBACKS if fallbacks is None else fallbacks
@@ -112,6 +124,7 @@ class LLM:
         self.completion = completion
         self.num_retries = num_retries
         self.timeout = timeout
+        self.cache_dir = Path(cache_dir) if cache_dir else None
         self.usage = Usage()
 
     def ask(self, system: str, user: str, schema: type[T]) -> T:
@@ -120,10 +133,14 @@ class LLM:
             {"role": "system", "content": with_schema(system, schema)},
             {"role": "user", "content": user},
         ]
+        cached = self.cache_path(messages, schema)
+        if cached and cached.exists():
+            self.usage.cache_hits += 1
+            return schema.model_validate_json(cached.read_text(encoding="utf-8"))
         for _ in range(SCHEMA_RETRIES + 1):
             content = self.complete(messages, schema)
             try:
-                return schema.model_validate_json(strip_fences(content))
+                reply = schema.model_validate_json(strip_fences(content))
             except ValidationError as error:
                 last_error = error
                 messages += [
@@ -134,9 +151,30 @@ class LLM:
                         "Reply again with the corrected JSON only.",
                     },
                 ]
+                continue
+            if cached:  # only replies that passed the schema, so a bad one never sticks
+                cached.parent.mkdir(parents=True, exist_ok=True)
+                temporary = cached.with_suffix(".tmp")
+                temporary.write_text(reply.model_dump_json(), encoding="utf-8")
+                temporary.replace(cached)  # atomic: a crash never leaves half a file
+            return reply
         raise SchemaError(
             f"{schema.__name__}: no valid reply after {SCHEMA_RETRIES + 1} attempts"
         ) from last_error
+
+    def cache_path(self, messages: list[dict], schema: type[BaseModel]) -> Path | None:
+        """The file for this exact request, or None when caching is off."""
+        if not self.cache_dir:
+            return None
+        request = {
+            "model": self.model,
+            "messages": messages,
+            "schema": schema.model_json_schema(),
+            "reasoning_effort": self.reasoning_effort,
+            "num_ctx": self.num_ctx,
+        }
+        key = hashlib.sha256(json.dumps(request, sort_keys=True).encode()).hexdigest()
+        return self.cache_dir / f"{key}.json"
 
     def complete(self, messages: list[dict], schema: type[BaseModel]) -> str:
         options = {}

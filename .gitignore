@@ -18,6 +18,9 @@ build/
 data/raw/
 data/processed/
 
+# Development cache of LLM replies (LLM_CACHE_DIR)
+.cache/
+
 # Editors and OS
 .idea/
 .vscode/
