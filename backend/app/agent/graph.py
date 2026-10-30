@@ -13,6 +13,9 @@
            check_transparency --(uncertain)--> ask_user -> extract_facts
                   |
                   v
+           determine_role --(Art. 25 unknown)--> ask_user -> extract_facts
+                  |
+                  v
            verify_citations -> report -> END
 
 The LLM fills schemas inside the nodes; the edges are plain functions of the
@@ -49,6 +52,7 @@ from backend.app.agent.prohibited import (
     ProhibitedResult,
     check_prohibited,
 )
+from backend.app.agent.role import RoleResult, decide_role
 from backend.app.agent.transparency import (
     Duty,
     TransparencyCheck,
@@ -75,6 +79,7 @@ STATE_TYPES = [
         TransparencyCheck,
         TransparencyResult,
         Duty,
+        RoleResult,
     )
 ]
 SERDE = JsonPlusSerializer(allowed_msgpack_modules=STATE_TYPES)  # use for every checkpointer
@@ -122,6 +127,7 @@ class Assessment(TypedDict, total=False):
     prohibited: ProhibitedResult
     high_risk: HighRiskResult
     transparency: TransparencyResult
+    role: RoleResult
     citations: list[Citation]  # from the latest results, verified
     report: dict
 
@@ -145,6 +151,10 @@ def after_high_risk(state: Assessment) -> str:
 
 
 def after_transparency(state: Assessment) -> str:
+    return "ask_user" if needs_answers(state) else "determine_role"
+
+
+def after_role(state: Assessment) -> str:
     return "ask_user" if needs_answers(state) else "verify_citations"
 
 
@@ -162,7 +172,7 @@ def latest_results(state: Assessment) -> list:
     """The results the report rests on: a ban ends the assessment after Article 5."""
     if state["prohibited"].is_prohibited:
         return [state["prohibited"]]
-    return [state["prohibited"], state["high_risk"], state["transparency"]]
+    return [state["prohibited"], state["high_risk"], state["transparency"], state["role"]]
 
 
 def report(state: Assessment) -> dict:
@@ -177,6 +187,8 @@ def report(state: Assessment) -> dict:
     return {
         "report": {
             "risk": risk,
+            "role": state["role"].role if "role" in state else state["facts"].role,
+            "became_provider": state["role"].became_provider if "role" in state else [],
             "banned": prohibited.banned,
             "high_risk_basis": high_risk.basis if high_risk else [],
             "exception": high_risk.exception if high_risk else None,
@@ -227,6 +239,14 @@ def build_graph(
         ]
         return {"transparency": result, "questions": questions}
 
+    def determine_role(state: Assessment) -> dict:
+        result = decide_role(state["facts"], state["high_risk"].is_high_risk, state["lang"])
+        questions = [
+            Question(id=name, text=text)
+            for name, text in zip(result.uncertain, result.questions, strict=True)
+        ]
+        return {"role": result, "questions": questions}
+
     def verify_citations(state: Assessment) -> dict:
         cited = [c for r in latest_results(state) for c in r.citations]
         return {"citations": verify(cited, lookup)}
@@ -250,6 +270,7 @@ def build_graph(
     graph.add_node("check_prohibited", check_prohibited_node)
     graph.add_node("check_high_risk", check_high_risk_node)
     graph.add_node("check_transparency", check_transparency_node)
+    graph.add_node("determine_role", determine_role)
     graph.add_node("verify_citations", verify_citations)
     graph.add_node("report", report)
     graph.add_edge(START, "extract_facts")
@@ -261,8 +282,9 @@ def build_graph(
         "check_high_risk", after_high_risk, ["ask_user", "check_transparency"]
     )
     graph.add_conditional_edges(
-        "check_transparency", after_transparency, ["ask_user", "verify_citations"]
+        "check_transparency", after_transparency, ["ask_user", "determine_role"]
     )
+    graph.add_conditional_edges("determine_role", after_role, ["ask_user", "verify_citations"])
     graph.add_edge("ask_user", "extract_facts")
     graph.add_edge("verify_citations", "report")
     graph.add_edge("report", END)

@@ -11,6 +11,7 @@ from backend.app.agent.graph import (
     after_facts,
     after_high_risk,
     after_prohibited,
+    after_role,
     after_transparency,
     build_graph,
 )
@@ -19,7 +20,15 @@ from backend.app.agent.prohibited import PRACTICES, ProhibitedCheck, decide
 from backend.app.agent.transparency import RULES, TransparencyCheck
 from backend.app.retrieval.contexts import Context
 
-KNOWN = Facts(purpose="Rank CVs", domain="employment", affected_people="people", role="deployer")
+KNOWN = Facts(
+    purpose="Rank CVs",
+    domain="employment",
+    affected_people="people",
+    role="deployer",
+    rebranded=False,
+    substantially_modified=False,
+    changed_purpose=False,
+)
 UNKNOWN = Facts(summary="Something")
 NO = {"applies": "no", "reason": "Does not match."}
 CLEAR = ProhibitedCheck(**dict.fromkeys(PRACTICES, NO))
@@ -230,4 +239,32 @@ def test_edges_are_plain_functions_of_the_state():
     assert after_high_risk({"questions": question}) == "ask_user"
     assert after_high_risk({"questions": []}) == "check_transparency"
     assert after_transparency({"questions": question}) == "ask_user"
-    assert after_transparency({"questions": []}) == "verify_citations"
+    assert after_transparency({"questions": []}) == "determine_role"
+    assert after_role({"questions": question}) == "ask_user"
+    assert after_role({"questions": []}) == "verify_citations"
+
+
+def test_a_deployer_of_a_high_risk_system_is_asked_about_article_25_and_becomes_provider():
+    unsure = KNOWN.model_copy(update={"rebranded": None, "substantially_modified": None})
+    rebranded = KNOWN.model_copy(update={"rebranded": True})
+    llm = ScriptedLLM(
+        Facts=[unsure, rebranded],
+        ProhibitedCheck=[CLEAR, CLEAR],
+        HighRiskCheck=[HIGH, HIGH],
+        TransparencyCheck=[NONE, NONE],
+    )
+    paused, done = run(llm, {"art25": "We sell it under our brand"})
+    [question] = paused["__interrupt__"][0].value["questions"]
+    assert question["id"] == "art25" and "trademark" in question["text"]
+    report = done["report"]
+    assert (report["role"], report["became_provider"]) == ("provider_and_deployer", ["a"])
+    assert "en_art25_p1_a" in [c["chunk_id"] for c in report["citations"]]
+
+
+def test_a_minimal_risk_deployer_is_not_asked_about_article_25():
+    deployer = KNOWN.model_copy(update={"rebranded": None})
+    llm = ScriptedLLM(
+        Facts=[deployer], ProhibitedCheck=[CLEAR], HighRiskCheck=[LOW], TransparencyCheck=[NONE]
+    )
+    [state] = run(llm)
+    assert (state["report"]["role"], state["report"]["uncertain"]) == ("deployer", [])
