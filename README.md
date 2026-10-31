@@ -80,6 +80,8 @@ The script tags the images with the commit (plus a hash of uncommitted changes),
 the `actie-secrets` Secret once from `.env` (the model key) and random values (the quota
 secret, the database password), and installs the chart with `values-kind.yaml`. On a real
 cluster: `--set image.tag=sha-<commit>` with the images CI publishes to GHCR.
+`deploy/helm/check.sh` lints the chart and validates every value combination against the
+Kubernetes schemas without a cluster (needs helm and kubeconform); CI runs it on every push.
 
 ## Ingestion pipeline
 
