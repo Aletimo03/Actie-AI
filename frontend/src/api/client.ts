@@ -14,6 +14,7 @@ export type Report = Schemas["Report"];
 export type Obligation = Schemas["ObligationOut"];
 export type Citation = Schemas["Citation"];
 export type Question = Schemas["QuestionOut"];
+export type Answer = Schemas["AnswerOut"];
 export type Lang = Schemas["AssessRequest"]["lang"] & string;
 
 // The stream's events are text, not in the OpenAPI spec: these mirror backend/app/api.py.

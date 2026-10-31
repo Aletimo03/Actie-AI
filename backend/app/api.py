@@ -144,10 +144,18 @@ class Report(BaseModel):
     unverified: list[str] = Field(description="Chunk ids whose quote or article was not found")
 
 
+class AnswerOut(BaseModel):
+    question: str
+    answer: str
+
+
 class AssessmentOut(BaseModel):
     id: str
     # incomplete: a provider error stopped the run between two checkpoints
     status: Literal["needs_answers", "done", "incomplete"]
+    # What the user submitted, so the result can be read next to it.
+    description: str
+    answers: list[AnswerOut] = Field(description="Questions answered so far; skipped ones left out")
     questions: list[QuestionOut] = []
     report: Report | None = None
 
@@ -219,14 +227,20 @@ def config(id: str) -> dict:
 def outcome(graph, id: str) -> AssessmentOut:
     """The assessment as its latest checkpoint shows it."""
     snapshot = graph.get_state(config(id))
-    if not snapshot.values:
+    values = snapshot.values
+    if not values:
         raise HTTPException(404, "assessment not found")
-    if report := snapshot.values.get("report"):
-        return AssessmentOut(id=id, status="done", report=report)
+    submitted = {
+        "id": id,
+        "description": values["description"],
+        "answers": [{"question": q, "answer": a} for q, a in values.get("answers", {}).items()],
+    }
+    if report := values.get("report"):
+        return AssessmentOut(**submitted, status="done", report=report)
     if snapshot.interrupts:
         questions = snapshot.interrupts[0].value["questions"]
-        return AssessmentOut(id=id, status="needs_answers", questions=questions)
-    return AssessmentOut(id=id, status="incomplete")
+        return AssessmentOut(**submitted, status="needs_answers", questions=questions)
+    return AssessmentOut(**submitted, status="incomplete")
 
 
 def unavailable(error: Exception) -> str:

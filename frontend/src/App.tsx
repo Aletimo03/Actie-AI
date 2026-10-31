@@ -13,6 +13,7 @@ import { Failure } from "@/components/Failure";
 import { Progress } from "@/components/Progress";
 import { Questions } from "@/components/Questions";
 import { Steps } from "@/components/Steps";
+import { Submitted } from "@/components/Submitted";
 import { ReportView } from "@/components/ReportView";
 import { STRINGS, initialLang } from "@/i18n";
 import { type Action, type View, reduce } from "@/state";
@@ -149,6 +150,7 @@ export function App() {
         )}
         {view.kind === "loading" && <p aria-busy>{t.loading}</p>}
         {view.kind === "running" && <Progress steps={view.steps} lang={lang} />}
+        {(view.kind === "asking" || view.kind === "done") && <Submitted submitted={view.submitted} lang={lang} />}
         {view.kind === "asking" && (
           <Questions
             key={view.questions.map((q) => q.id).join()}

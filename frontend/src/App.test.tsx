@@ -39,7 +39,7 @@ it("goes from the description to the questions to the report, and keeps the id i
     stream(
       { event: "start", data: { id: ID } },
       { event: "step", data: { step: "extract_facts", label: "Reading the description" } },
-      { event: "result", data: { id: ID, status: "needs_answers", questions: [{ id: "role", text: "Did you build it?" }] } },
+      { event: "result", data: { id: ID, status: "needs_answers", description: "A bank scores credit.", answers: [], questions: [{ id: "role", text: "Did you build it?" }] } },
     ),
   );
   vi.mocked(client.sendAnswers).mockReturnValue(stream({ event: "result", data: done }));
@@ -135,10 +135,23 @@ it("explains a dropped connection in words and offers to read the result", async
 
 it("lets the user start over from the questions", async () => {
   vi.mocked(client.startAssessment).mockReturnValue(
-    stream({ event: "result", data: { id: ID, status: "needs_answers", questions: [{ id: "role", text: "Did you build it?" }] } }),
+    stream({ event: "result", data: { id: ID, status: "needs_answers", description: "A bank scores credit.", answers: [], questions: [{ id: "role", text: "Did you build it?" }] } }),
   );
   const user = await describeSystem();
   await user.click(await screen.findByRole("button", { name: "Start again" }));
   expect(screen.getByLabelText("Description of the AI system")).toBeInTheDocument();
   expect(location.pathname).toBe("/");
+});
+
+it("shows the description and the answers next to the result", async () => {
+  history.replaceState(null, "", `/a/${ID}`);
+  vi.mocked(client.getAssessment).mockResolvedValue({
+    ...done,
+    answers: [{ question: "Did you build the system?", answer: "We bought it from a vendor." }],
+  });
+  render(<App />);
+  const submitted = await screen.findByRole("region", { name: "Description assessed" });
+  expect(submitted).toHaveTextContent(done.description);
+  expect(submitted).toHaveTextContent("Did you build the system?");
+  expect(submitted).toHaveTextContent("We bought it from a vendor.");
 });

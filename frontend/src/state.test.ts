@@ -15,12 +15,17 @@ describe("reduce", () => {
   });
 
   it("asks when the run pauses, and keeps the id when a run fails", () => {
-    const paused = { id: "a1", status: "needs_answers", questions: [{ id: "role", text: "?" }] };
+    const paused = { id: "a1", status: "needs_answers", description: "A bank scores credit.", answers: [], questions: [{ id: "role", text: "?" }] };
     const asking = reduce({ kind: "running", id: "a1", steps: [] }, {
       type: "result",
       assessment: paused as Assessment,
     });
-    expect(asking).toEqual({ kind: "asking", id: "a1", questions: [{ id: "role", text: "?" }] });
+    expect(asking).toEqual({
+      kind: "asking",
+      id: "a1",
+      questions: [{ id: "role", text: "?" }],
+      submitted: { description: "A bank scores credit.", answers: [] },
+    });
 
     const failed = reduce(asking, { type: "failed", message: "busy", retry: "continue", retryAfter: 60 });
     expect(failed).toMatchObject({ kind: "failed", id: "a1", retry: "continue", retryAfter: 60 });

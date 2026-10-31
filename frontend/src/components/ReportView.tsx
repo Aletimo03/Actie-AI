@@ -35,7 +35,8 @@ export function ReportView({ report, lang, onNew }: Props) {
   // The Art. 50 duties are usually among the obligations already, with their dates.
   const style = RISK_STYLE[report.risk];
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => heading.current?.focus(), []); // the result replaced the steps: say so
+  // The result replaced the steps: say so, without scrolling past the description above it.
+  useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const listed = new Set(report.obligations.map((o) => `${o.chunk_id} ${o.who}`));
   const extraDuties = report.transparency_duties.filter((d) => !listed.has(`${d.chunk_id} ${d.who}`));
 

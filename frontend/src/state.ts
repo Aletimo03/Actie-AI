@@ -2,7 +2,7 @@
  * The page as a state machine: one value says what is on screen, so states that
  * can't happen together (a spinner over a report) can't be written down.
  */
-import type { Assessment, Question, Report } from "@/api/client";
+import type { Answer, Assessment, Question, Report } from "@/api/client";
 
 // What "try again" does: start over with the same text, run a stopped assessment on,
 // or read it again (after a dropped connection, or a 409 from another tab).
@@ -12,9 +12,12 @@ export type View =
   | { kind: "describing"; error?: string }
   | { kind: "loading"; id: string }
   | { kind: "running"; id: string | null; steps: string[] }
-  | { kind: "asking"; id: string; questions: Question[] }
-  | { kind: "done"; id: string; report: Report }
+  | { kind: "asking"; id: string; questions: Question[]; submitted: Submitted }
+  | { kind: "done"; id: string; report: Report; submitted: Submitted }
   | { kind: "failed"; id: string | null; message: string | null; retry: Retry; retryAfter: number | null };
+
+/** What the user sent: the result is read next to it. */
+export type Submitted = { description: string; answers: Answer[] };
 
 export type Action =
   | { type: "run"; id: string | null }
@@ -55,8 +58,9 @@ export function reduce(view: View, action: Action): View {
   }
 }
 
-export function fromAssessment({ id, status, questions, report }: Assessment): View {
-  if (status === "done" && report) return { kind: "done", id, report };
-  if (status === "needs_answers") return { kind: "asking", id, questions: questions ?? [] };
+export function fromAssessment({ id, status, questions, report, description, answers }: Assessment): View {
+  const submitted = { description, answers };
+  if (status === "done" && report) return { kind: "done", id, report, submitted };
+  if (status === "needs_answers") return { kind: "asking", id, questions: questions ?? [], submitted };
   return { kind: "failed", id, message: null, retry: "continue", retryAfter: null };
 }

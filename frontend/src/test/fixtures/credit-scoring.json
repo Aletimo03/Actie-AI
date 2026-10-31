@@ -1,6 +1,8 @@
 {
   "id": "a07a5618-b545-4c20-9337-653d65d1a1b6",
   "status": "done",
+  "description": "We are a bank. We built and use our own AI model that scores consumers credit-worthiness from their transaction history to decide on personal loan applications in Italy.",
+  "answers": [],
   "questions": [],
   "report": {
     "risk": "high",

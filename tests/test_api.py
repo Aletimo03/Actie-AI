@@ -62,6 +62,12 @@ def test_a_vague_system_pauses_then_the_answers_finish_the_report(client):
     )
     assert done.status_code == 200
     assert done.json()["status"] == "done" and done.json()["report"]["risk"] == "high"
+    # The result keeps what the user submitted: the description and each answered question.
+    assert done.json()["description"] == DESCRIPTION
+    assert done.json()["answers"] == [
+        {"question": "What is the system for, and what does it produce or decide?",
+         "answer": "Ranks CVs."},
+    ]  # fmt: skip
 
 
 def test_left_out_questions_are_sent_blank_so_the_run_still_resumes(client):

@@ -6,6 +6,8 @@ export const LAW_VERSION = "2026-07-27"; // consolidated text in the database (0
 const en = {
   title: "EU AI Act assessment",
   headline: "Assess an AI system under the EU AI Act",
+  submittedTitle: "Description assessed",
+  answersTitle: "Answers provided",
   skip: "Skip to main content",
   flowLabel: "Assessment steps",
   flow: ["Description", "Analysis", "Questions", "Result"],
@@ -94,6 +96,8 @@ type Strings = typeof en;
 const it: Strings = {
   title: "Valutazione AI Act",
   headline: "Valutazione di un sistema di IA ai sensi dell'AI Act",
+  submittedTitle: "Descrizione valutata",
+  answersTitle: "Risposte fornite",
   skip: "Vai al contenuto principale",
   flowLabel: "Fasi della valutazione",
   flow: ["Descrizione", "Analisi", "Domande", "Esito"],

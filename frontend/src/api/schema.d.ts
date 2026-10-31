@@ -144,6 +144,13 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AnswerOut */
+        AnswerOut: {
+            /** Question */
+            question: string;
+            /** Answer */
+            answer: string;
+        };
         /** AnswersRequest */
         AnswersRequest: {
             /** Answers */
@@ -171,6 +178,13 @@ export interface components {
              * @enum {string}
              */
             status: "needs_answers" | "done" | "incomplete";
+            /** Description */
+            description: string;
+            /**
+             * Answers
+             * @description Questions answered so far; skipped ones left out
+             */
+            answers: components["schemas"]["AnswerOut"][];
             /**
              * Questions
              * @default []

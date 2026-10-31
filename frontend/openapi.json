@@ -313,6 +313,24 @@
   },
   "components": {
     "schemas": {
+      "AnswerOut": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answer": {
+            "type": "string",
+            "title": "Answer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "AnswerOut"
+      },
       "AnswersRequest": {
         "properties": {
           "answers": {
@@ -370,6 +388,18 @@
             ],
             "title": "Status"
           },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerOut"
+            },
+            "type": "array",
+            "title": "Answers",
+            "description": "Questions answered so far; skipped ones left out"
+          },
           "questions": {
             "items": {
               "$ref": "#/components/schemas/QuestionOut"
@@ -392,7 +422,9 @@
         "type": "object",
         "required": [
           "id",
-          "status"
+          "status",
+          "description",
+          "answers"
         ],
         "title": "AssessmentOut"
       },
