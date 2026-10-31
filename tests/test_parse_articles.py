@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from ingestion.parse import label_key, parse_articles
+from ingestion.parse import SOURCE_TYPOS, Node, fix_source_typos, label_key, parse_articles
 
 # A shrunken copy of the consolidated markup, with the cases that broke early versions.
 HTML = """
@@ -141,3 +141,22 @@ def test_reading_order_of_text_and_points(nodes):
     assert parts[1:3] == [["c", "en_art6_p3_a"], ["c", "en_art6_p3_b"]]
     assert parts[3] == ["t", "Profiling is always high-risk."]  # after the list, as in the law
     assert parts[4] == ["c", "en_art6_p3_s2_a"]
+
+
+def test_source_typos_only_restore_missing_spaces():
+    for typos in SOURCE_TYPOS.values():
+        for typo, fixed in typos.items():
+            assert fixed.replace(" ", "") == typo and fixed.count(" ") == 1, typo
+
+
+def test_glued_words_of_the_official_text_are_split_and_stale_entries_reported():
+    glued = "l'uso di sistemi di IAper la valutazione"
+    nodes = [
+        Node("it_art5_p1_c", "point", "c)", glued, None, [], parts=[["t", glued], ["c", "x"]]),
+        Node("it_art5_p3", "paragraph", "3", "Per ogni uso", None, []),
+    ]
+    warnings = fix_source_typos(nodes, "it")
+    assert nodes[0].text == "l'uso di sistemi di IA per la valutazione"
+    assert nodes[0].parts == [["t", nodes[0].text], ["c", "x"]]  # chunk reads this copy
+    assert "IAper" not in str(warnings) and any("'ogniuso' found 0 times" in w for w in warnings)
+    assert fix_source_typos(nodes, "en") == []  # the English text has none

@@ -19,6 +19,12 @@ Recitals exist only in the original 2024 text (consolidations omit them):
 <p class="modref"> markers show amendments: "▼M1" starts text changed by
 the first amending act, "▼B" returns to the basic 2024 text. Nodes inside
 an amended stretch get amended=True; the markers never reach the text.
+
+The Italian text has a few words glued together in the Official Journal
+itself ("sistemi di IAper la valutazione"), so keyword search could not
+match them. SOURCE_TYPOS restores the missing spaces, and only spaces;
+parse warns when a typo is no longer in the source, so the table follows
+EUR-Lex if it is ever corrected upstream.
 """
 
 import argparse
@@ -50,6 +56,20 @@ ANNEX_HEADING = re.compile(
 )
 NUMBERED = re.compile(r"^(\d+(?:\.\d+)*)\.?\s+(.+)$", re.S)  # "3.1. The application ..."
 ROMAN = {"I": 1, "V": 5, "X": 10, "L": 50, "C": 100}
+
+# Words glued together in the official text (OJ 2024, kept in the consolidation): found by
+# scanning every node for rare words made of two frequent ones. Each fix only adds a space.
+SOURCE_TYPOS = {
+    "it": {
+        "requisitistabiliti": "requisiti stabiliti",  # Art. 3(28)
+        "delsistema": "del sistema",  # Art. 3(32)
+        "IAper": "IA per",  # Art. 5(1)(c)
+        "ogniuso": "ogni uso",  # Art. 5(3)
+        "autoritàcompetente": "autorità competente",  # Art. 21(1)
+        "autoritàcompetenti": "autorità competenti",  # Art. 22(3)(d)
+        "ladesignazione": "la designazione",  # Art. 36(4)
+    },
+}
 
 
 @dataclass
@@ -387,6 +407,22 @@ def latest_consolidated(raw_dir: Path = RAW_DIR) -> str:
     return versions[-1]  # the date suffix sorts chronologically
 
 
+def fix_source_typos(nodes: list[Node], lang: str) -> list[str]:
+    """Restore the spaces missing from the official text; returns a warning per stale entry."""
+    warnings_ = []
+    for typo, fixed in SOURCE_TYPOS.get(lang, {}).items():
+        found = 0
+        for node in nodes:
+            found += node.text.count(typo)
+            node.text = node.text.replace(typo, fixed)
+            for part in node.parts:  # the reading-order copy that chunk builds from
+                if part[0] == "t":
+                    part[1] = part[1].replace(typo, fixed)
+        if found != 1:
+            warnings_.append(f"source typo {typo!r} found {found} times: update SOURCE_TYPOS")
+    return warnings_
+
+
 def parse_language(lang: str, consolidated: str, raw_dir: Path = RAW_DIR) -> list[Node]:
     """Articles and annexes from the consolidated text, recitals from the original."""
     current = parse_file(raw_dir / consolidated / f"{lang}.html", lang)
@@ -396,6 +432,8 @@ def parse_language(lang: str, consolidated: str, raw_dir: Path = RAW_DIR) -> lis
         node.source = consolidated
     for node in recitals:
         node.source = BASE_CELEX
+    for warning in fix_source_typos(current, lang):
+        print(f"warning: {warning}")
     return current + recitals
 
 

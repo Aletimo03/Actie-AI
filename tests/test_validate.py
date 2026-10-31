@@ -84,6 +84,13 @@ def test_leftover_markup_fails_text():
     assert broken(lambda d: d.contexts["en"][0].update(text="▼M1 1 A rule")) == ["text"]
 
 
+def test_a_word_glued_in_the_official_text_fails_text():
+    def glue(data):
+        data.contexts["it"][0]["text"] += " sistemi di IAper la valutazione"
+
+    assert broken(glue) == ["text"]
+
+
 def test_wrong_wording_fails_spot_checks():
     assert broken(lambda d: d.chunks["it"][0].update(text="Altro testo.")) == ["spot checks"]
 

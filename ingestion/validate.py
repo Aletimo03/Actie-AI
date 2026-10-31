@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ingestion.chunk import latest_processed
+from ingestion.parse import SOURCE_TYPOS
 
 LANGS = ("en", "it")
 EXPECTED_COUNTS = {"article": 119, "annex": 14, "recital": 180}  # consolidated text of 27.7.2026
@@ -145,6 +146,16 @@ def check_clean_text(data: Data) -> Check:
     return check
 
 
+def check_source_typos(data: Data) -> Check:
+    check = Check("text: words glued in the official text are split again")
+    for lang in LANGS:
+        for c in data.chunks[lang] + data.contexts[lang]:
+            for typo in SOURCE_TYPOS.get(lang, {}):
+                if typo in c["text"]:
+                    check.problems.append(f"{c['id']}: '{typo}'")
+    return check
+
+
 def check_spot(data: Data) -> Check:
     check = Check("spot checks: known provisions say what the law says")
     for lang in LANGS:
@@ -165,6 +176,7 @@ CHECKS = [
     check_sizes,
     check_refs,
     check_clean_text,
+    check_source_typos,
     check_spot,
 ]
 
