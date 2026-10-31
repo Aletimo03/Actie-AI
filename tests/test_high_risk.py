@@ -99,7 +99,12 @@ def test_unknown_profiling_and_influence_are_both_asked():
 def test_uncertain_findings_become_questions():
     unsure = {"applies": "uncertain", "reason": "?", "question": "Is it used in hiring?"}
     annex = decide(check(annex_iii=unsure), Facts(), "en")
-    assert not annex.is_high_risk and annex.questions == ["Is it used in hiring?"]
+    assert annex.questions == ["Is it used in hiring?"]
+    assert annex.is_high_risk and annex.basis == ["en_annex3"]  # open counts as high-risk
+
+    product = {"applies": "uncertain", "reason": "?", "question": "Is it a medical device?"}
+    pump = decide(check(annex_i=product), Facts(), "it")
+    assert pump.is_high_risk and pump.basis == ["it_art6_p1"] and pump.uncertain == ["annex_i"]
 
     open_exception = NO_EXCEPTION | {"applies": "uncertain", "question": "Does a human review it?"}
     result = decide(check(annex_iii=MATCH, exception=open_exception), Facts(), "en")

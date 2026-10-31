@@ -14,8 +14,9 @@ The step loads Art. 6(1)-(4) and all of Annex III by id (about 1.7k words):
 the whole annex, not only the extracted domain's point, so a wrong domain
 cannot hide the right area. Annex I (about 3k words) is added only for
 products. The LLM reads and fills the findings; code applies the exception,
-the profiling override and the follow-up questions; an exception that is
-still open counts as high-risk.
+the profiling override and the follow-up questions. Anything still open (an
+Annex I or Annex III match, an exception) counts as high-risk, flagged as
+uncertain: a user who skips the question gets more obligations, not fewer.
 """
 
 import re
@@ -151,14 +152,19 @@ def decide(check: HighRiskCheck, facts: Facts, lang: str) -> HighRiskResult:
         result.citations.append(Citation(chunk_id=chunk_id, quote=quote or "", claim=claim))
 
     product, annex, exception = check.annex_i, check.annex_iii, check.exception
-    if product.applies == "yes":
+    # An open match counts until it is answered: in the baseline, an insulin pump whose
+    # Annex I question went unanswered was reported as minimal risk.
+    if product.applies == "uncertain":
+        ask("annex_i", product.question)
+    if product.applies != "no":
         result.basis.append(f"{lang}_art6_p1")
         cite(f"{lang}_art6_p1", product.quote, product.reason)
-    elif product.applies == "uncertain":
-        ask("annex_i", product.question)
 
     if annex.applies == "uncertain":
         ask("annex_iii", annex.question)
+        point = point_id(annex.point, lang)  # no exception for a match not yet confirmed
+        result.basis.append(point)
+        cite(point, annex.quote, annex.reason)
     elif annex.applies == "yes":
         # Unresolved exceptions count as high-risk while they are asked: if the user never
         # answers, the report errs on the side of more obligations, not fewer.
