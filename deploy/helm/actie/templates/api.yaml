@@ -26,8 +26,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "actie.labels" . | nindent 8 }}
-        {{- include "actie.selector" "api" | nindent 8 }}
+        {{- include "actie.podLabels" (list . "api") | nindent 8 }}
         actie.io/db-client: "true"
       annotations:
         # A changed setting rolls the pods; otherwise it waits for the next restart.

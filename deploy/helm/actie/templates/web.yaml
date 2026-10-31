@@ -15,8 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "actie.labels" . | nindent 8 }}
-        {{- include "actie.selector" "web" | nindent 8 }}
+        {{- include "actie.podLabels" (list . "web") | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       {{- with .Values.image.pullSecrets }}

@@ -15,8 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "actie.labels" . | nindent 8 }}
-        {{- include "actie.selector" "load-law" | nindent 8 }}
+        {{- include "actie.podLabels" (list . "load-law") | nindent 8 }}
         actie.io/db-client: "true"
     spec:
       restartPolicy: OnFailure
@@ -53,8 +52,7 @@ spec:
       template:
         metadata:
           labels:
-            {{- include "actie.labels" . | nindent 12 }}
-            {{- include "actie.selector" "retention" | nindent 12 }}
+            {{- include "actie.podLabels" (list . "retention") | nindent 12 }}
             actie.io/db-client: "true"
         spec:
           restartPolicy: OnFailure

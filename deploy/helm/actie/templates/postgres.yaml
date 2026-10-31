@@ -15,8 +15,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "actie.labels" . | nindent 8 }}
-        {{- include "actie.selector" "postgres" | nindent 8 }}
+        {{- include "actie.podLabels" (list . "postgres") | nindent 8 }}
     spec:
       automountServiceAccountToken: false
       securityContext:

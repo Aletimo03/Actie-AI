@@ -8,6 +8,13 @@ app.kubernetes.io/version: {{ .Values.image.tag | quote }}
 helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version }}
 {{- end }}
 
+{{/* A pod's labels: the common ones plus its component (which the selector matches). */}}
+{{- define "actie.podLabels" -}}
+{{- $root := index . 0 -}}
+{{ include "actie.labels" $root }}
+app.kubernetes.io/component: {{ index . 1 }}
+{{- end }}
+
 {{- define "actie.selector" -}}
 app.kubernetes.io/part-of: actie
 app.kubernetes.io/component: {{ . }}
