@@ -24,7 +24,8 @@ RUN useradd --system --uid 10001 --no-create-home app
 COPY --from=build --chown=app:app /app /app
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 WORKDIR /app
-USER app
+# Numeric, not the name: Kubernetes' runAsNonRoot can only verify a number is not 0.
+USER 10001
 EXPOSE 8000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
