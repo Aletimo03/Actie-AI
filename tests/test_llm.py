@@ -11,6 +11,7 @@ from backend.app.llm import (
     RATE_LIMIT_BUDGET,
     PromptTooLong,
     SchemaError,
+    response_format,
     retry_after,
     strip_fences,
     with_schema,
@@ -136,6 +137,17 @@ def test_hosted_models_get_no_ollama_options():
     llm, fake = make_llm(VALID, num_ctx=1000)
     llm.ask("s", "u", Facts)
     assert "num_ctx" not in fake.calls[0]
+
+
+def test_claude_gets_its_only_accepted_temperature():
+    llm, _ = make_llm(VALID, reasoning_effort=None)
+    assert llm.options("anthropic/claude-haiku-5-5", []) == {}
+    assert llm.options("groq/openai/gpt-oss-120b", []) == {"temperature": 0}
+
+
+def test_claude_gets_plain_json_mode_and_others_the_schema():
+    assert response_format("anthropic/claude-haiku-5-5", Facts) == {"type": "json_object"}
+    assert response_format("groq/openai/gpt-oss-120b", Facts) is Facts
 
 
 def limited(wait: str) -> litellm.RateLimitError:

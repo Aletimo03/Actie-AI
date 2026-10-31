@@ -68,6 +68,17 @@ class SchemaError(RuntimeError):
     """The model did not produce a reply matching the schema."""
 
 
+def response_format(model: str, schema: type[BaseModel]) -> type[BaseModel] | dict:
+    """The schema for constrained decoding, or plain JSON where a provider rejects ours.
+
+    Anthropic refuses schemas with more than 16 optional (union-typed) fields, and Facts
+    has more. The schema is in the system prompt anyway and every reply is validated.
+    """
+    if model.startswith("anthropic/"):
+        return {"type": "json_object"}
+    return schema
+
+
 class PromptTooLong(RuntimeError):
     """The prompt would not fit the model's context window and would be cut silently."""
 
@@ -207,8 +218,7 @@ class LLM:
                 response = self.completion(
                     model=model,
                     messages=messages,
-                    response_format=schema,
-                    temperature=0,  # same input, (nearly) same verdict
+                    response_format=response_format(model, schema),
                     max_tokens=self.max_tokens,
                     num_retries=self.num_retries,
                     timeout=self.timeout,
@@ -235,6 +245,10 @@ class LLM:
     def options(self, model: str, messages: list[dict]) -> dict:
         """Provider-specific settings for one call."""
         options = {}
+        # Same input, (nearly) same verdict. Claude 5.5 models accept only temperature=1
+        # and reject the call otherwise (measured on claude-haiku-5-5).
+        if not model.startswith("anthropic/"):
+            options["temperature"] = 0
         if self.num_ctx and model.startswith("ollama"):
             tokens = self.count_tokens(model=model, messages=messages)
             if tokens > self.num_ctx * PROMPT_SHARE:
