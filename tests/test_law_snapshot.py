@@ -29,6 +29,14 @@ def test_the_agent_reads_the_law_from_a_loaded_snapshot(db):
     assert models == [("none (snapshot)",)]
 
 
+def test_loading_again_leaves_the_law_as_it_is(db):
+    first = load(db)
+    db.execute("UPDATE chunks SET embedding_model = 'real' WHERE id = 'en_art5_p1'")
+    assert load(db) == dict.fromkeys(first, 0)  # nothing written the second time
+    model = db.execute("SELECT embedding_model FROM chunks WHERE id = 'en_art5_p1'").fetchone()
+    assert model == ("real",)  # e.g. real embeddings from ingestion are kept
+
+
 def test_export_then_load_gives_the_same_rows(db, tmp_path):
     load(db)
     copy = tmp_path / "again.jsonl.gz"

@@ -66,8 +66,13 @@ def load(conn: psycopg.Connection, path: Path = SNAPSHOT) -> dict[str, int]:
         "chunks": (["embedding", "embedding_model"], ["[" + ",".join(["0"] * DIMENSIONS) + "]",
                                                       "none (snapshot)"]),
     }  # fmt: skip
+    [version] = [row["version"] for row in by_table["versions"]]
     with conn.transaction():
         conn.execute(SCHEMA.read_text())
+        # Runs on every deploy (a Kubernetes Job): a version already there, from an earlier
+        # run or from real ingestion with real embeddings, is left as it is.
+        if conn.execute("SELECT 1 FROM versions WHERE version = %s", (version,)).fetchone():
+            return dict.fromkeys(COLUMNS, 0)
         for table, columns in COLUMNS.items():
             names, values = extra[table]
             sql = f"COPY {table} ({', '.join(columns + names)}) FROM STDIN"
