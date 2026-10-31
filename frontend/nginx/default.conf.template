@@ -1,0 +1,49 @@
+# The UI's static files and a same-origin proxy to the API (so no CORS).
+# A template: at start the image fills in ${API_UPSTREAM} (default http://api:8000).
+server {
+    listen 8080;
+    server_tokens off;
+    root /usr/share/nginx/html;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # A description is at most 4,000 characters and 20 answers 1,000 each.
+    client_max_body_size 128k;
+
+    location /api/ {
+        proxy_pass ${API_UPSTREAM}/;  # the trailing / strips the /api prefix
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        # Replace, never append: an appended header lets a client choose its own IP
+        # and get a fresh quota on every request.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Progress is streamed (SSE): pass each event on as it arrives.
+        proxy_buffering off;
+        proxy_read_timeout 120s;  # a report takes 20-40 s
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    # File names carry a content hash: a changed file is a new name, so cache for a year.
+    location /assets/ {
+        try_files $uri =404;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    # Client routes such as /a/<id> get the app; index.html is always revalidated, or a
+    # browser could keep an old one pointing at assets that no longer exist.
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache" always;
+        include /etc/nginx/snippets/security-headers.conf;
+    }
+}
