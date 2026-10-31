@@ -1,5 +1,6 @@
 # The UI's static files and a same-origin proxy to the API (so no CORS).
-# A template: at start the image fills in ${API_UPSTREAM} (default http://api:8000).
+# A template: at start the image fills in ${API_UPSTREAM} (default http://api:8000) and
+# ${REAL_IP_FROM} (default 127.0.0.1/32).
 server {
     listen 8080;
     server_tokens off;
@@ -7,6 +8,14 @@ server {
 
     gzip on;
     gzip_types text/css application/javascript application/json image/svg+xml;
+
+    # Behind another proxy (a Kubernetes ingress), the client's address arrives in
+    # X-Forwarded-For: take it only from that proxy's network (${REAL_IP_FROM}), walking
+    # the header from the right past trusted hops. The default trusts only loopback, so
+    # without a proxy in front (Compose) a client can't choose its own address.
+    set_real_ip_from ${REAL_IP_FROM};
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
 
     # A description is at most 4,000 characters and 20 answers 1,000 each.
     client_max_body_size 128k;

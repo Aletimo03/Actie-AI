@@ -16,7 +16,7 @@ FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
-ENV API_UPSTREAM=http://api:8000
+ENV API_UPSTREAM=http://api:8000 REAL_IP_FROM=127.0.0.1/32
 EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --retries=3 \
     CMD wget -q --spider http://127.0.0.1:8080/healthz || exit 1

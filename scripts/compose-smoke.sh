@@ -20,6 +20,7 @@ status() {  # status <path> <expected>
 check "UI page"                         status / 200
 check "client route falls back to UI"   status /a/00000000-0000-4000-8000-000000000000 200
 check "API through the proxy"           status /api/health 200
+check "API liveness (no database)"      status /api/livez 200
 check "API reaches the database"        status /api/assessments/00000000-0000-4000-8000-000000000000 404
 check "nginx health"                    status /healthz 200
 check "security policy on the page"     sh -c "curl -sI '$WEB/' | grep -qi '^content-security-policy:.*default-src .self.'"
@@ -28,6 +29,19 @@ check "API runs as non-root"            sh -c "[ \"\$(docker compose exec -T api
 check "UI runs as non-root"             sh -c "[ \"\$(docker compose exec -T web id -u)\" != 0 ]"
 check "no ingestion packages in the API" docker compose exec -T api python -c \
   "import importlib.util as u, sys; sys.exit(any(u.find_spec(m) for m in ('torch', 'sentence_transformers', 'bs4', 'lxml', 'pgvector')))"
+# A request claiming to come from 203.0.113.9: the address nginx logs first must be the
+# real caller's. Wait for the log line (it arrives a moment later); no line is a failure.
+spoof_ignored() {
+  local tag="spoof-$RANDOM" address=""
+  curl -s -o /dev/null -H "X-Forwarded-For: 203.0.113.9" "$WEB/api/livez?$tag"
+  for _ in $(seq 20); do
+    address=$(docker compose logs --no-log-prefix web 2>/dev/null | grep "$tag" | awk '{print $1}')
+    [ -n "$address" ] && break
+    sleep 0.25
+  done
+  [ -n "$address" ] && [ "$address" != 203.0.113.9 ]
+}
+check "a spoofed client address is ignored" spoof_ignored
 check "API port published nowhere"      sh -c "! docker compose ps api --format '{{.Ports}}' | grep -q -- '->'"
 
 for service in api web; do
