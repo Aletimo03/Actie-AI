@@ -4,7 +4,11 @@ Two routes make a system high-risk:
 - Art. 6(1): a safety component of a product (or the product itself) covered by
   the Annex I legislation and needing a third-party conformity assessment;
 - Art. 6(2): a use listed in Annex III, unless the Art. 6(3) exception applies,
-  and the exception never applies to a system that profiles people.
+  and the exception never applies to a system that profiles people. The
+  exception needs both a condition of 6(3)(a)-(d) and an output that does not
+  materially influence the decision (6(3), first subparagraph): the model must
+  answer the second separately, since "narrow procedural task" alone was
+  claimed for systems that decide (emergency dispatch order, draft rulings).
 
 The step loads Art. 6(1)-(4) and all of Annex III by id (about 1.7k words):
 the whole annex, not only the extracted domain's point, so a wrong domain
@@ -37,6 +41,12 @@ PROFILING_QUESTION = {
     "it": "Il sistema valuta, assegna punteggi o classifica singole persone (per esempio "
     "rendimento, affidabilità o comportamento)?",
 }
+INFLUENCE_QUESTION = {
+    "en": "Does the system's output shape a decision about people (what is decided, for whom, "
+    "or in what order), or does a human decide independently without relying on it?",
+    "it": "Il risultato del sistema orienta una decisione sulle persone (cosa si decide, per chi "
+    "o in che ordine), oppure una persona decide in modo indipendente senza basarsi su di esso?",
+}
 
 
 class ProductFinding(BaseModel):
@@ -58,15 +68,17 @@ class AnnexIIIFinding(BaseModel):
 
 
 class ExceptionFinding(BaseModel):
-    applies: Answer = Field(
-        description="yes: a condition of Art. 6(3) holds and the system does not materially "
-        "influence decisions"
-    )
+    applies: Answer = Field(description="yes: one of the conditions (a)-(d) of Art. 6(3) holds")
     condition: Literal["a", "b", "c", "d"] | None = Field(
         None,
         description="Which condition of Art. 6(3): a narrow procedural task, b improves "
         "a completed human activity, c detects patterns without replacing human review, "
         "d preparatory task",
+    )
+    influences_decision: Answer = Field(
+        description="yes: the output materially influences the outcome of a decision about "
+        "people (decides, ranks, prioritises, recommends or drafts it); no: a human decides "
+        "independently and the output does not shape the outcome"
     )
     reason: str
     quote: str | None = None
@@ -86,7 +98,11 @@ Give three findings:
   a product), needing a third-party conformity assessment? Mind paragraphs 1a-1c.
 - annex_iii: does its intended use match a point of Annex III? Name the point, e.g. "4(a)".
 - exception: if annex_iii is yes, does a condition of Article 6(3) hold? Answer about the
-  conditions only; profiling is decided separately.
+  conditions only; profiling is decided separately. Then answer influences_decision on
+  its own: does the output materially influence the outcome of decisions about people?
+  Converting data into a structured format, sorting documents into categories or finding
+  duplicates does not. Deciding, ranking or prioritising people or cases, recommending an
+  outcome or drafting a decision does, even when a human signs it off.
 Each finding is "yes", "no" or "uncertain" (a deciding fact is missing: write the question).
 Rules:
 - Use only the text and the facts given, not outside knowledge.
@@ -147,13 +163,18 @@ def decide(check: HighRiskCheck, facts: Facts, lang: str) -> HighRiskResult:
         # Unresolved exceptions count as high-risk while they are asked: if the user never
         # answers, the report errs on the side of more obligations, not fewer.
         point = point_id(annex.point, lang)
-        excepted = exception.applies == "yes"
-        if excepted and facts.profiles_people is False:
+        # 6(3) needs a condition and no material influence on the decision: "uncertain"
+        # influence is asked, like profiling; "yes" rules the exception out.
+        influence = exception.influences_decision
+        excepted = exception.applies == "yes" and influence != "yes"
+        if excepted and influence == "no" and facts.profiles_people is False:
             result.exception = exception.condition or "?"
             cite(f"{lang}_art6_p3", exception.quote, exception.reason)
         else:
             if excepted and facts.profiles_people is None:
                 ask("profiling", PROFILING_QUESTION[lang])  # profiling rules out 6(3)
+            if excepted and influence == "uncertain" and facts.profiles_people is not True:
+                ask("influence", INFLUENCE_QUESTION[lang])
             elif exception.applies == "uncertain" and not facts.profiles_people:
                 ask("exception", exception.question)
             result.basis.append(point)

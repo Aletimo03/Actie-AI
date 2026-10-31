@@ -12,10 +12,17 @@ from backend.app.retrieval.contexts import Context
 
 NO = {"applies": "no", "reason": "No."}
 MATCH = {"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "recruitment"}
-NARROW = {"applies": "yes", "condition": "a", "reason": "Only reformats.", "quote": "narrow"}
+NARROW = {
+    "applies": "yes",
+    "condition": "a",
+    "influences_decision": "no",
+    "reason": "Only reformats.",
+    "quote": "narrow",
+}
+NO_EXCEPTION = NO | {"influences_decision": "uncertain"}
 
 
-def check(annex_i=NO, annex_iii=NO, exception=NO) -> HighRiskCheck:
+def check(annex_i=NO, annex_iii=NO, exception=NO_EXCEPTION) -> HighRiskCheck:
     return HighRiskCheck(annex_i=annex_i, annex_iii=annex_iii, exception=exception)
 
 
@@ -71,12 +78,30 @@ def test_unknown_profiling_is_asked_and_counts_as_high_risk():
     assert result.questions[0].startswith("Il sistema valuta")
 
 
+def test_the_exception_needs_an_output_that_does_not_influence_the_decision():
+    # The baseline under-classified emergency dispatch as a "narrow procedural task".
+    deciding = NARROW | {"influences_decision": "yes"}
+    result = decide(check(annex_iii=MATCH, exception=deciding), Facts(profiles_people=False), "en")
+    assert result.is_high_risk and result.exception is None and result.questions == []
+
+    unsure = NARROW | {"influences_decision": "uncertain"}
+    result = decide(check(annex_iii=MATCH, exception=unsure), Facts(profiles_people=False), "it")
+    assert result.is_high_risk and result.uncertain == ["influence"]
+    assert result.questions[0].startswith("Il risultato del sistema")
+
+
+def test_unknown_profiling_and_influence_are_both_asked():
+    unsure = NARROW | {"influences_decision": "uncertain"}
+    result = decide(check(annex_iii=MATCH, exception=unsure), Facts(), "en")
+    assert result.is_high_risk and result.uncertain == ["profiling", "influence"]
+
+
 def test_uncertain_findings_become_questions():
     unsure = {"applies": "uncertain", "reason": "?", "question": "Is it used in hiring?"}
     annex = decide(check(annex_iii=unsure), Facts(), "en")
     assert not annex.is_high_risk and annex.questions == ["Is it used in hiring?"]
 
-    open_exception = {"applies": "uncertain", "reason": "?", "question": "Does a human review it?"}
+    open_exception = NO_EXCEPTION | {"applies": "uncertain", "question": "Does a human review it?"}
     result = decide(check(annex_iii=MATCH, exception=open_exception), Facts(), "en")
     assert result.is_high_risk and result.questions == ["Does a human review it?"]
 

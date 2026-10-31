@@ -34,6 +34,7 @@ KNOWN = Facts(
 )
 UNKNOWN = Facts(summary="Something")
 NO = {"applies": "no", "reason": "Does not match."}
+NO_EXCEPTION = NO | {"influences_decision": "uncertain"}  # Art. 6(3)
 CLEAR = ProhibitedCheck(**dict.fromkeys(PRACTICES, NO))
 BANNED = ProhibitedCheck(
     **dict.fromkeys(PRACTICES, NO)
@@ -43,7 +44,7 @@ UNSURE = ProhibitedCheck(
     **dict.fromkeys(PRACTICES, NO)
     | {"f": {"applies": "uncertain", "reason": "?", "question": "Is it for medical reasons?"}}
 )
-LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO)
+LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO_EXCEPTION)
 NONE = TransparencyCheck(**dict.fromkeys(RULES, NO))
 CHATBOT = TransparencyCheck(
     **dict.fromkeys(RULES, NO)
@@ -52,7 +53,7 @@ CHATBOT = TransparencyCheck(
 HIGH = HighRiskCheck(
     annex_i=NO,
     annex_iii={"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "The words"},
-    exception=NO,
+    exception=NO_EXCEPTION,
 )
 
 
