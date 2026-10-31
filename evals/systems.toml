@@ -1,0 +1,489 @@
+# End-to-end test set: AI systems as a user would describe them, and the assessment
+# the whole graph must reach. Labels follow the consolidated text 02024R1689-20260727.
+#   risk      prohibited | high | limited | minimal (required)
+#   banned    Art. 5(1) labels the report must list (any order)
+#   basis     high-risk bases without the language prefix; "annex3_4" accepts any point of 4
+#   duties    Art. 50 paragraphs the report must list (own or other role)
+#   role      the final role (after Art. 25)
+#   answers   replies to follow-up questions by id; anything else is skipped (blank)
+#   why       the provision the label rests on
+#   quick     in the --quick subset: every risk level, both languages, the known failures
+
+# --- Prohibited (Art. 5) -------------------------------------------------------
+
+[[system]]
+id = "toy-dangerous-challenges"
+quick = true
+description = "We make a talking doll for children aged 4-8. Its AI voice assistant encourages the children to try risky stunts, like climbing furniture, to win in-app rewards."
+lang = "en"
+risk = "prohibited"
+banned = ["b"]
+why = "5(1)(b): exploits vulnerability due to age, causing or likely to cause significant harm"
+
+[[system]]
+id = "municipal-social-score"
+description = "Il nostro comune ha sviluppato un sistema che assegna a ogni cittadino un punteggio di affidabilità in base al suo comportamento sui social network e alle multe, e lo usa per decidere chi può accedere agli alloggi popolari e ai servizi comunali."
+lang = "it"
+risk = "prohibited"
+banned = ["c"]
+why = "5(1)(c): social scoring leading to unfavourable treatment in unrelated contexts"
+
+[[system]]
+id = "crime-prediction-personality"
+description = "We built software for the police that predicts which individuals will commit a crime in the future, based only on their personality traits, family background and neighbourhood."
+lang = "en"
+risk = "prohibited"
+banned = ["d"]
+why = "5(1)(d): predicting offences based solely on profiling or personality traits"
+
+[[system]]
+id = "face-scraping-database"
+description = "Our company scrapes billions of facial images from social media and public websites, without targeting anyone in particular, to build a facial recognition database that we sell to clients."
+lang = "en"
+risk = "prohibited"
+banned = ["e"]
+answers = { real_time = "No, it builds a database; it does not identify people live." }
+why = "5(1)(e): untargeted scraping of facial images to build a facial recognition database"
+
+[[system]]
+id = "employee-emotions-meetings"
+quick = true
+description = "Usiamo un software acquistato che analizza con le webcam le espressioni facciali dei nostri dipendenti durante le riunioni per rilevarne le emozioni e valutare il loro coinvolgimento."
+lang = "it"
+risk = "prohibited"
+banned = ["f"]
+answers = { real_time = "No, non identifica nessuno, rileva solo le emozioni." }
+why = "5(1)(f): emotion recognition in the workplace, not for medical or safety reasons"
+
+[[system]]
+id = "classroom-emotions"
+description = "Abbiamo sviluppato un'app per le scuole che con la webcam misura le emozioni degli studenti durante le lezioni per capire quanto sono attenti."
+lang = "it"
+risk = "prohibited"
+banned = ["f"]
+answers = { real_time = "No, non identifica gli studenti." }
+why = "5(1)(f): emotion recognition in education institutions"
+
+[[system]]
+id = "faces-infer-orientation"
+description = "We built a system that analyses customers' faces from store cameras to infer their sexual orientation and religion, so that we can show them targeted ads."
+lang = "en"
+risk = "prohibited"
+banned = ["g"]
+answers = { real_time = "It does not identify anyone, it only categorises them." }
+why = "5(1)(g): biometric categorisation inferring sex life or sexual orientation and religious beliefs"
+
+[[system]]
+id = "live-face-recognition-police"
+description = "We sell a system that the police use on live CCTV in city squares to identify every passer-by in real time against a watchlist of wanted people."
+lang = "en"
+risk = "prohibited"
+banned = ["h"]
+answers = { art5_h = "No: it identifies every passer-by, not targeted searches for specific victims or suspects." }
+why = "5(1)(h): real-time remote biometric identification in public spaces for law enforcement, used generally rather than for the listed targeted searches"
+
+[[system]]
+id = "nudify-app"
+quick = true
+description = "We built an app where users upload a photo of any real person and the AI generates a realistic nude image of that person, without asking for their consent."
+lang = "en"
+risk = "prohibited"
+banned = ["ba"]
+why = "5(1)(ba) (Omnibus): non-consensual sexual deepfakes of an identifiable person"
+
+# --- High-risk: Annex III --------------------------------------------------------
+
+[[system]]
+id = "cv-ranker-provider"
+quick = true
+description = "We sell software that ranks job applicants' CVs and shortlists candidates for interviews. We built it."
+lang = "en"
+risk = "high"
+basis = ["annex3_4_a"]
+role = "provider"
+why = "Annex III 4(a): recruitment and selection, analysing and filtering applications"
+
+[[system]]
+id = "concorso-ranking"
+description = "Un ente pubblico usa un software comprato da un fornitore per filtrare le domande e stilare la graduatoria dei candidati di un concorso per assunzioni."
+lang = "it"
+risk = "high"
+basis = ["annex3_4_a"]
+answers = { art25 = "No, lo usiamo così com'è." }
+why = "Annex III 4(a): selection of natural persons for employment"
+
+[[system]]
+id = "cv-tool-retrained"
+description = "We bought a CV screening tool from a vendor and use it to shortlist applicants for our own vacancies."
+lang = "en"
+risk = "high"
+basis = ["annex3_4_a"]
+role = "provider_and_deployer"
+answers = { art25 = "Yes, we retrained it on our own hiring data and changed how it scores candidates." }
+why = "Annex III 4(a); Art. 25(1)(b): a substantial modification makes the deployer a provider"
+
+[[system]]
+id = "productivity-firing"
+description = "We developed a tool that monitors warehouse employees' productivity and behaviour and recommends which workers should be dismissed or promoted."
+lang = "en"
+risk = "high"
+basis = ["annex3_4_b"]
+why = "Annex III 4(b): decisions on promotion and termination, monitoring and evaluating workers"
+
+[[system]]
+id = "bank-credit-scoring"
+quick = true
+description = "Siamo una banca e usiamo un software acquistato da un fornitore per valutare il merito creditizio dei clienti privati e decidere sui prestiti."
+lang = "it"
+risk = "high"
+basis = ["annex3_5_b"]
+role = "deployer"
+answers = { art25 = "No, lo usiamo così com'è.", art5_c = "No, valuta solo se il cliente può restituire il prestito che ha chiesto.", affected_people = "I clienti privati che chiedono un prestito." }
+why = "Annex III 5(b): creditworthiness of natural persons"
+
+[[system]]
+id = "life-insurance-pricing"
+description = "We built a model that sets the premium of individual life and health insurance policies from each applicant's medical history and lifestyle data."
+lang = "en"
+risk = "high"
+basis = ["annex3_5_c"]
+why = "Annex III 5(c): risk assessment and pricing for life and health insurance"
+
+[[system]]
+id = "welfare-eligibility"
+description = "Un sistema sviluppato per l'INPS che valuta se i cittadini hanno diritto ai sussidi di disoccupazione e propone di revocarli."
+lang = "it"
+risk = "high"
+basis = ["annex3_5_a"]
+answers = { role = "L'abbiamo sviluppato noi per l'INPS, che lo usa.", affected_people = "I cittadini che chiedono il sussidio." }
+why = "Annex III 5(a): public authorities evaluating eligibility for public benefits"
+
+[[system]]
+id = "emergency-call-triage"
+description = "We built an AI that listens to 112 emergency calls, classifies how urgent each one is and decides which ambulance to dispatch first."
+lang = "en"
+risk = "high"
+basis = ["annex3_5_d"]
+answers = { art6_profiling = "It does not profile people: it classifies each call by medical urgency.", art6_influence = "Yes: its urgency class sets the order in which ambulances are sent.", affected_people = "People who call 112." }
+why = "Annex III 5(d): evaluating and classifying emergency calls, dispatching emergency services"
+
+[[system]]
+id = "university-admissions"
+description = "Abbiamo sviluppato un sistema che decide quali studenti ammettere ai corsi di laurea della nostra università in base ai loro curriculum e ai test."
+lang = "it"
+risk = "high"
+basis = ["annex3_3_a"]
+why = "Annex III 3(a): determining access or admission to educational institutions"
+
+[[system]]
+id = "exam-grading"
+description = "Abbiamo sviluppato un software che corregge e dà il voto agli esami scritti degli studenti universitari."
+lang = "it"
+risk = "high"
+basis = ["annex3_3_b"]
+why = "Annex III 3(b): evaluating learning outcomes"
+
+[[system]]
+id = "online-proctoring"
+description = "We sell online proctoring software that watches students through their webcam during remote exams and flags cheating to the university."
+lang = "en"
+risk = "high"
+basis = ["annex3_3_d"]
+answers = { real_time = "It does not identify anyone, it only flags suspicious behaviour.", art5_f = "No, it does not detect emotions, only behaviour such as looking away or a second person in the room.", affected_people = "University students taking remote exams." }
+why = "Annex III 3(d): monitoring and detecting prohibited behaviour of students during tests"
+
+[[system]]
+id = "evidence-reliability"
+description = "We built a tool for police investigators that evaluates how reliable the evidence collected in a criminal investigation is."
+lang = "en"
+risk = "high"
+basis = ["annex3_6"]
+answers = { affected_people = "Suspects and other people involved in criminal investigations." }
+why = "Annex III 6(c): evaluating the reliability of evidence for law enforcement"
+
+[[system]]
+id = "visa-risk"
+description = "A tool we developed for border authorities that assesses the security and irregular-migration risk posed by each visa applicant."
+lang = "en"
+risk = "high"
+basis = ["annex3_7"]
+why = "Annex III 7: risk assessment of persons entering a Member State"
+
+[[system]]
+id = "asylum-examination"
+description = "Un software per le commissioni territoriali che esamina le domande di asilo e valuta l'attendibilità delle prove presentate dai richiedenti."
+lang = "it"
+risk = "high"
+basis = ["annex3_7"]
+answers = { role = "L'abbiamo sviluppato noi e lo forniamo alle commissioni.", affected_people = "I richiedenti asilo." }
+why = "Annex III 7(c): examination of applications for asylum and the reliability of evidence"
+
+[[system]]
+id = "judge-assistant"
+description = "We built an AI that helps judges research and interpret the facts and the law of a case and drafts a proposed ruling."
+lang = "en"
+risk = "high"
+basis = ["annex3_8_a"]
+answers = { art6_profiling = "No, it analyses case documents and the law; it does not profile the parties.", art6_influence = "Yes: judges start from the proposed ruling it drafts.", affected_people = "The parties to court cases." }
+why = "Annex III 8(a): assisting a judicial authority in researching and interpreting facts and law"
+
+[[system]]
+id = "voter-microtargeting"
+description = "Software we developed for a political party that micro-targets voters with personalised messages designed to change how they vote in the national election."
+lang = "en"
+risk = "high"
+basis = ["annex3_8_b"]
+answers = { art5_a = "No subliminal or deceptive techniques: it sends ordinary personalised political ads.", affected_people = "Voters in the national election." }
+why = "Annex III 8(b): influencing the outcome of an election or the voting behaviour"
+
+[[system]]
+id = "grid-load-control"
+description = "We developed an AI component that is the safety component controlling load balancing in a regional electricity grid, to prevent blackouts."
+lang = "en"
+risk = "high"
+basis = ["annex3_2"]
+answers = { affected_people = "Households and businesses supplied by the grid." }
+why = "Annex III 2: safety components in the supply of electricity"
+
+[[system]]
+id = "traffic-lights"
+description = "Abbiamo sviluppato un sistema di IA che gestisce i semafori di una città come componente di sicurezza del traffico stradale."
+lang = "it"
+risk = "high"
+basis = ["annex3_2"]
+answers = { art6_profiling = "No, usa sensori del traffico e non valuta singole persone.", affected_people = "Automobilisti e pedoni della città." }
+why = "Annex III 2: safety components in the management of road traffic"
+
+[[system]]
+id = "shoplifter-recognition"
+quick = true
+description = "We bought a system for our supermarkets that matches faces in recorded CCTV footage against a list of known shoplifters to identify them after the fact."
+lang = "en"
+risk = "high"
+basis = ["annex3_1_a"]
+answers = { real_time = "No, it works on recorded footage, not live.", art25 = "No, we use it as delivered.", art6_influence = "Yes: staff act on its matches to identify people." }
+why = "Annex III 1(a): remote biometric identification (post, not law enforcement, so not Art. 5(1)(h))"
+
+[[system]]
+id = "pilot-fatigue"
+quick = true
+description = "We built a system for airlines that reads pilots' faces in the cockpit to detect fatigue and stress, for flight safety reasons."
+lang = "en"
+risk = "high"
+basis = ["annex3_1_c"]
+answers = { real_time = "It does not identify the pilots.", art5_f = "It is used only for flight safety, not to evaluate or sanction the pilots.", affected_people = "The airline's pilots." }
+why = "Art. 5(1)(f) excludes safety reasons, but emotion recognition stays high-risk under Annex III 1(c)"
+
+[[system]]
+id = "store-shopper-emotions"
+description = "Abbiamo sviluppato un sistema che analizza le espressioni dei clienti nei negozi per riconoscerne le emozioni davanti agli scaffali, a fini di marketing."
+lang = "it"
+risk = "high"
+basis = ["annex3_1_c"]
+duties = ["art50_p3"]
+answers = { real_time = "No, non identifica i clienti.", affected_people = "I clienti dei negozi." }
+why = "Annex III 1(c): emotion recognition (outside work and education, so not banned); Art. 50(3) for the deployer"
+
+# --- High-risk: Annex I products (Art. 6(1)) -------------------------------------
+
+[[system]]
+id = "insulin-pump"
+quick = true
+description = "We make insulin pumps; our AI component adjusts the insulin dose automatically and is a safety component of the medical device."
+lang = "en"
+risk = "high"
+basis = ["art6_p1"]
+answers = { affected_people = "Patients with diabetes who use the pump." }
+why = "Art. 6(1) + Annex I: safety component of a medical device under the MDR"
+
+[[system]]
+id = "lift-braking"
+description = "Abbiamo sviluppato un sistema di IA che è il componente di sicurezza di un ascensore e ne controlla la frenata di emergenza."
+lang = "it"
+risk = "high"
+basis = ["art6_p1"]
+answers = { affected_people = "Le persone che usano l'ascensore." }
+why = "Art. 6(1) + Annex I: safety component under the Lifts Directive"
+
+[[system]]
+id = "xray-cancer"
+description = "We sell software, certified as a medical device, that reads chest X-rays and flags suspected lung cancer for radiologists."
+lang = "en"
+risk = "high"
+basis = ["art6_p1"]
+answers = { affected_people = "Patients whose X-rays are read, and their radiologists." }
+why = "Art. 6(1) + Annex I: AI that is itself a medical device requiring third-party conformity assessment"
+
+# --- Annex III areas that are not high-risk (Art. 6(3), exclusions) -------------
+
+[[system]]
+id = "cv-parser"
+quick = true
+description = "We built a tool that only converts unstructured CVs into a structured format (name, education, past jobs) for our HR database. It does not rank, score or assess anyone."
+lang = "en"
+risk = "minimal"
+answers = { affected_people = "Job applicants whose CVs are stored.", art6_profiling = "No, it only copies data into fields; it does not evaluate anyone.", art6_influence = "No: recruiters read the CVs and decide on their own; the tool only fills database fields." }
+why = "Art. 6(3)(a): narrow procedural task, no profiling"
+
+[[system]]
+id = "face-unlock"
+quick = true
+description = "We built the face unlock feature of a smartphone: it checks that the person holding the phone is its owner."
+lang = "en"
+risk = "minimal"
+answers = { real_time = "It only verifies the owner, it does not identify people.", affected_people = "The owner of the phone." }
+why = "Annex III 1(a) excludes biometric verification that only confirms a person is who they claim to be"
+
+[[system]]
+id = "card-fraud"
+description = "La nostra banca ha sviluppato un sistema che rileva in tempo reale le transazioni con carta sospette di frode e le blocca."
+lang = "it"
+risk = "minimal"
+answers = { affected_people = "I clienti della banca che pagano con carta." }
+why = "Annex III 5(b) excludes AI used to detect financial fraud"
+
+# --- Limited risk (Art. 50) ------------------------------------------------------
+
+[[system]]
+id = "shop-chatbot"
+quick = true
+description = "We built a customer-service chatbot for our online shop; shoppers chat with it on our website."
+lang = "en"
+risk = "limited"
+duties = ["art50_p1"]
+answers = { affected_people = "Shoppers on our website." }
+why = "Art. 50(1): AI interacting directly with people"
+
+[[system]]
+id = "bought-chatbot"
+description = "Usiamo sul nostro sito un chatbot per l'assistenza clienti acquistato da un fornitore."
+lang = "it"
+risk = "limited"
+duties = ["art50_p1"]
+answers = { affected_people = "I clienti che scrivono al chatbot.", art50_interacts = "Sì, i clienti scrivono direttamente al chatbot." }
+why = "Art. 50(1): the provider's duty, shown to the deployer"
+
+[[system]]
+id = "voicebot-calls"
+description = "We developed a voicebot that phones our customers to remind them of unpaid invoices and answers their questions."
+lang = "en"
+risk = "limited"
+duties = ["art50_p1"]
+answers = { affected_people = "Our customers with unpaid invoices." }
+why = "Art. 50(1): AI interacting directly with people"
+
+[[system]]
+id = "image-generator"
+quick = true
+description = "Abbiamo sviluppato un generatore di immagini che crea foto realistiche da descrizioni testuali per agenzie di marketing."
+lang = "it"
+risk = "limited"
+duties = ["art50_p2"]
+answers = { affected_people = "Le agenzie che lo usano e chi vede le immagini." }
+why = "Art. 50(2): synthetic image content must be marked"
+
+[[system]]
+id = "music-generator"
+description = "We built an app that generates original songs, vocals included, from a text prompt."
+lang = "en"
+risk = "limited"
+duties = ["art50_p2"]
+answers = { affected_people = "Our users and the people who listen to the songs." }
+why = "Art. 50(2): synthetic audio content must be marked"
+
+[[system]]
+id = "writing-assistant"
+description = "Abbiamo sviluppato un assistente che scrive testi pubblicitari e post per i social a partire da poche parole chiave."
+lang = "it"
+risk = "limited"
+duties = ["art50_p2"]
+answers = { affected_people = "Chi usa l'assistente e chi legge i testi." }
+why = "Art. 50(2): synthetic text content must be marked"
+
+[[system]]
+id = "deepfake-ad"
+quick = true
+description = "Our agency uses an AI video tool we bought to create an advert in which a realistic AI-generated version of a famous actor appears to speak about our product."
+lang = "en"
+risk = "limited"
+duties = ["art50_p4"]
+answers = { art25 = "No.", affected_people = "People who watch the advert." }
+why = "Art. 50(4): deployer disclosure for deep fakes"
+
+[[system]]
+id = "news-articles"
+description = "Il nostro giornale online pubblica articoli di attualità scritti interamente da un'IA acquistata, senza revisione da parte dei giornalisti."
+lang = "it"
+risk = "limited"
+duties = ["art50_p4"]
+answers = { affected_people = "I lettori del giornale." }
+why = "Art. 50(4): AI-generated text published to inform the public, without human editorial review"
+
+[[system]]
+id = "voice-cloning"
+description = "We built a service that clones a person's voice from a short recording and reads any text aloud with it."
+lang = "en"
+risk = "limited"
+duties = ["art50_p2"]
+answers = { affected_people = "Our users and the people who hear the cloned voice." }
+why = "Art. 50(2): synthetic audio content must be marked"
+
+# --- Minimal risk ----------------------------------------------------------------
+
+[[system]]
+id = "spam-filter"
+quick = true
+description = "A spam filter we developed for our own company email server; it moves junk email to a folder."
+lang = "en"
+risk = "minimal"
+answers = { affected_people = "Our employees, whose email is filtered." }
+why = "No Art. 5, Annex III or Art. 50 situation"
+
+[[system]]
+id = "product-recommendations"
+quick = true
+description = "Abbiamo sviluppato un sistema di raccomandazione che suggerisce prodotti ai clienti del nostro e-commerce in base ai loro acquisti."
+lang = "it"
+risk = "minimal"
+answers = { affected_people = "I clienti dell'e-commerce." }
+why = "Profiling, but in no Annex III area"
+
+[[system]]
+id = "demand-forecasting"
+description = "We built a model that forecasts weekly product demand for our stores so we can order the right amount of stock."
+lang = "en"
+risk = "minimal"
+answers = { affected_people = "Nobody directly; it forecasts product demand." }
+why = "No people affected directly; no listed use"
+
+[[system]]
+id = "game-enemies"
+description = "In our video game, an AI we developed controls how the enemy characters move and attack."
+lang = "en"
+risk = "minimal"
+answers = { affected_people = "The players of the game." }
+why = "No listed use; players are not interacting with an AI posing as a person"
+
+[[system]]
+id = "warehouse-layout"
+description = "Abbiamo sviluppato un software che ottimizza la disposizione delle merci nei nostri magazzini per ridurre i tempi di prelievo."
+lang = "it"
+risk = "minimal"
+answers = { affected_people = "Nessuno direttamente: riguarda la disposizione delle merci." }
+why = "No people affected directly; no listed use"
+
+[[system]]
+id = "ticket-routing"
+description = "Usiamo un software comprato che classifica per argomento i ticket di assistenza e li smista al reparto giusto."
+lang = "it"
+risk = "minimal"
+answers = { affected_people = "I clienti che aprono i ticket." }
+why = "Classifies messages, not people; no listed use"
+
+[[system]]
+id = "photo-enhancer"
+description = "We built a feature that removes noise and sharpens photos taken with our camera app, without changing what they show."
+lang = "en"
+risk = "minimal"
+answers = { affected_people = "Our users, whose own photos are enhanced." }
+why = "Art. 50(2) does not apply to assistive editing that does not substantially alter the input"
