@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from contextlib import contextmanager
@@ -111,6 +112,56 @@ def test_a_provider_failure_is_503_and_the_paused_state_is_kept(client):
     failed = client.post(f"/assessments/{id}/answers", json={"answers": {}})
     assert failed.status_code == 503 and failed.headers["retry-after"] == "60"
     assert client.get(f"/assessments/{id}").json()["status"] == "incomplete"
+
+
+def events(response) -> list[tuple[str, dict]]:
+    """The (event, data) pairs of a Server-Sent Events body."""
+    pairs = []
+    for block in response.text.strip().split("\n\n"):
+        name, data = block.split("\n")
+        pairs.append((name.removeprefix("event: "), json.loads(data.removeprefix("data: "))))
+    return pairs
+
+
+def test_streaming_sends_each_step_then_the_same_result_as_the_json_endpoint(client):
+    serve(graph_over(scripted()))
+    paused = client.post("/assessments/stream", json={"description": DESCRIPTION, "lang": "it"})
+    assert paused.headers["content-type"].startswith("text/event-stream")
+    assert paused.headers["x-accel-buffering"] == "no"  # or nginx holds every event back
+    sent = events(paused)
+    (_, start), *steps, (last, result) = sent
+    assert [d["label"] for _, d in steps] == ["Lettura della descrizione"]
+    assert last == "result" and result["status"] == "needs_answers"
+    assert client.get(f"/assessments/{start['id']}").json() == result
+
+    done = events(client.post(f"/assessments/{start['id']}/answers/stream", json={"answers": {}}))
+    assert [d["step"] for name, d in done if name == "step"] == [
+        "extract_facts", "check_prohibited", "check_high_risk", "check_transparency",
+        "determine_role", "list_obligations", "verify_citations", "report",
+    ]  # fmt: skip
+    assert done[-1][0] == "result" and done[-1][1]["report"]["risk"] == "high"
+
+
+def test_a_failure_after_the_stream_opens_is_an_error_event(client):
+    class Down(ScriptedLLM):
+        def ask(self, system, user, schema):
+            raise SchemaError("Facts: no valid reply after 2 attempts")
+
+    serve(graph_over(Down()))
+    sent = events(client.post("/assessments/stream", json={"description": DESCRIPTION}))
+    assert [name for name, _ in sent] == ["start", "error"]
+    assert sent[1][1]["retry_after"] == 60
+
+
+def test_streamed_answers_check_the_assessment_before_the_stream_opens(client):
+    serve(graph_over(scripted(Facts=[KNOWN])))
+
+    def answer(id):
+        return client.post(f"/assessments/{id}/answers/stream", json={"answers": {}})
+
+    assert answer("00000000-0000-4000-8000-000000000000").status_code == 404
+    id = client.post("/assessments", json={"description": DESCRIPTION}).json()["id"]
+    assert answer(id).status_code == 409
 
 
 def test_health_reports_the_database(client):
