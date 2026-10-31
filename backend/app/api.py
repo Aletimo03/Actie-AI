@@ -24,6 +24,7 @@ import json
 import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import date
 from typing import Annotated, Literal
 from uuid import uuid4
 
@@ -34,11 +35,12 @@ from langgraph.checkpoint.postgres import PostgresSaver
 from langgraph.types import Command
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app import quota
 from backend.app.agent.citations import fetch_chunks
 from backend.app.agent.graph import SERDE, build_graph
+from backend.app.agent.prohibited import Citation
 from backend.app.llm import LLM, SchemaError
 from backend.app.retrieval.contexts import fetch_contexts
 
@@ -90,12 +92,55 @@ class QuestionOut(BaseModel):
     text: str
 
 
+Who = Literal["provider", "deployer"]
+
+
+class DutyOut(BaseModel):
+    situation: str = Field(description="The Art. 50 situation, e.g. interacts, deepfake")
+    chunk_id: str
+    who: Who
+    text: str
+
+
+class ObligationOut(BaseModel):
+    chunk_id: str
+    who: Who
+    text: str
+    applies_from: date
+    in_force: bool = Field(description="Already applies on the day of the assessment")
+    condition: str | None = Field(description="A fact the user must check for it to apply")
+    verified: bool = Field(description="The article exists in the current law text")
+
+
+class Report(BaseModel):
+    """The report node's dict, typed for /docs and the frontend's generated types."""
+
+    model_config = ConfigDict(extra="forbid")  # a new key in the node fails the tests
+
+    risk: Literal["prohibited", "high", "limited", "minimal"]
+    role: Literal["provider", "deployer", "provider_and_deployer"] | None = Field(
+        description="None when the description did not say"
+    )
+    became_provider: list[str] = Field(description="Art. 25(1) points that make them a provider")
+    banned: list[str] = Field(description="Art. 5(1) points found to apply")
+    high_risk_basis: list[str] = Field(description="Chunk ids of the rules that make it high-risk")
+    exception: str | None = Field(description="The Art. 6(3) condition that took it out")
+    transparency_duties: list[DutyOut]
+    other_role_duties: list[DutyOut] = Field(description="The other role's duties, for context")
+    uncertain: list[str] = Field(description="Findings the model could not settle")
+    assumed_unknown: list[str] = Field(description="Facts the description did not give")
+    obligations: list[ObligationOut]
+    notes: list[str]
+    citations: list[Citation]
+    unverified: list[str] = Field(description="Chunk ids whose quote or article was not found")
+
+
 class AssessmentOut(BaseModel):
     id: str
     # incomplete: a provider error stopped the run between two checkpoints
     status: Literal["needs_answers", "done", "incomplete"]
     questions: list[QuestionOut] = []
-    report: dict | None = None
+    report: Report | None = None
 
 
 @asynccontextmanager
@@ -203,7 +248,7 @@ def stream(graph, value, id: str, lang: str) -> StreamingResponse:
         except UNAVAILABLE as error:
             yield event("error", {"message": unavailable(error), "retry_after": int(RETRY_AFTER)})
             return
-        yield event("result", outcome(graph, id).model_dump())
+        yield event("result", outcome(graph, id).model_dump(mode="json"))
 
     # Starlette iterates a sync generator in a thread, like a def endpoint. Proxies such
     # as nginx buffer responses unless told not to, and the steps would arrive at the end.

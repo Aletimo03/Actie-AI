@@ -7,7 +7,7 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from langgraph.checkpoint.memory import InMemorySaver
-from test_graph import CLEAR, HIGH, KNOWN, NONE, TODAY, UNKNOWN, ScriptedLLM, fetch, lookup
+from test_graph import BANNED, CLEAR, HIGH, KNOWN, NONE, TODAY, UNKNOWN, ScriptedLLM, fetch, lookup
 
 from backend.app.agent.graph import SERDE, build_graph
 from backend.app.api import app, check_quota, get_graph, get_pool
@@ -74,6 +74,22 @@ def test_a_clear_system_reports_at_once(client):
     serve(graph_over(scripted(Facts=[KNOWN])))
     body = client.post("/assessments", json={"description": DESCRIPTION, "lang": "it"}).json()
     assert body["status"] == "done" and body["questions"] == []
+
+
+def test_a_banned_system_reports_through_the_typed_model(client):
+    serve(graph_over(scripted(Facts=[KNOWN], ProhibitedCheck=[BANNED])))
+    report = client.post("/assessments", json={"description": DESCRIPTION}).json()["report"]
+    assert report["risk"] == "prohibited" and report["obligations"] == []
+    assert report["exception"] is None and report["transparency_duties"] == []
+
+
+def test_the_schema_types_the_report_for_the_frontend():
+    schemas = app.openapi()["components"]["schemas"]
+    assert schemas["Report"]["properties"]["risk"]["enum"] == [
+        "prohibited", "high", "limited", "minimal",
+    ]  # fmt: skip
+    applies_from = schemas["ObligationOut"]["properties"]["applies_from"]
+    assert applies_from == {"type": "string", "format": "date", "title": "Applies From"}
 
 
 @pytest.mark.parametrize(
