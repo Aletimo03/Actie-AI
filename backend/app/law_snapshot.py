@@ -1,16 +1,18 @@
-"""The law the agent reads, as a small file: so the eval can run on an empty database (CI).
+"""The law the agent reads, as a small file: to fill an empty database without ingestion.
+
+Used by the agent eval in CI and by the Kubernetes Job that loads the law (Lecture 12).
 
 The agent never searches by vector: it reads contexts and chunks by id. So the snapshot
 holds the current version's rows without their embeddings (0.9 MB instead of ~40 MB, and
 no Ollama needed to rebuild them). `load` writes them into the real schema with zero
 vectors marked `embedding_model = 'none (snapshot)'`, so the agent's own SQL runs against
 the same tables as in production. Vector search on such a database finds nothing useful:
-it is for the agent eval, not the retrieval eval.
+it is for the agent and its eval, not the retrieval eval.
 
 Export again after loading a new version of the law (a test fails while they differ):
 
-    uv run --env-file .env python -m evals.law_snapshot export
-    DATABASE_URL=... uv run python -m evals.law_snapshot load
+    uv run --env-file .env python -m backend.app.law_snapshot export
+    DATABASE_URL=... uv run python -m backend.app.law_snapshot load
 """
 
 import argparse
@@ -21,8 +23,9 @@ from pathlib import Path
 
 import psycopg
 
-SNAPSHOT = Path(__file__).with_name("law_snapshot.jsonl.gz")
-SCHEMA = Path(__file__).parents[1] / "db" / "schema.sql"
+DB = Path(__file__).parents[2] / "db"
+SNAPSHOT = DB / "law_snapshot.jsonl.gz"
+SCHEMA = DB / "schema.sql"
 CURRENT = "(SELECT version FROM versions WHERE is_current)"
 COLUMNS = {
     "versions": ["version"],

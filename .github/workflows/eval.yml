@@ -61,7 +61,7 @@ jobs:
         run: uv sync --locked --no-dev --no-group ingest
 
       - name: Load the law from the snapshot (db/schema.sql creates the vector extension)
-        run: uv run --no-sync python -m evals.law_snapshot load
+        run: uv run --no-sync python -m backend.app.law_snapshot load
 
       - name: Run the eval (fails on any under-classification)
         env:

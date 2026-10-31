@@ -118,8 +118,8 @@ uv run --env-file .env python -m evals.systems           # all 52
 On Claude Haiku 5.5 a run costs about $0.08 (quick) or $0.27 (full) without the reply
 cache, so CI never runs it by itself: start it from **Actions → Eval → Run workflow**,
 with `ANTHROPIC_API_KEY` stored as a secret of the `eval` environment. It needs no ingestion:
-[`evals/law_snapshot.jsonl.gz`](evals/law_snapshot.jsonl.gz) holds the law the agent
-reads (0.9 MB, no embeddings); `python -m evals.law_snapshot export` refreshes it after
+[`db/law_snapshot.jsonl.gz`](db/law_snapshot.jsonl.gz) holds the law the agent
+reads (0.9 MB, no embeddings); `python -m backend.app.law_snapshot export` refreshes it after
 loading a new version of the law, and a test fails until you do.
 
 ## Project layout

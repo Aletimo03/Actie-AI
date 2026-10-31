@@ -5,8 +5,8 @@ import os
 import pytest
 
 from backend.app.agent.citations import fetch_chunks
+from backend.app.law_snapshot import SNAPSHOT, export, load
 from backend.app.retrieval.contexts import fetch_contexts
-from evals.law_snapshot import SNAPSHOT, export, load
 
 
 def snapshot_version() -> str:
@@ -50,4 +50,4 @@ def test_the_snapshot_is_the_law_in_the_local_database():
         current = conn.execute("SELECT version FROM versions WHERE is_current").fetchone()
     if current is None:
         pytest.skip("no law loaded in this database (CI)")
-    assert snapshot_version() == current[0], "run: python -m evals.law_snapshot export"
+    assert snapshot_version() == current[0], "run: python -m backend.app.law_snapshot export"
