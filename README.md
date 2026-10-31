@@ -49,6 +49,8 @@ law must be loaded into the database once (see "Ingestion pipeline"), and the `p
 volume keeps it. Only the UI (`127.0.0.1:8080`) and the database (`127.0.0.1:5432`, for
 ingestion) are published, both on this machine only. The images run as non-root users;
 the API image leaves out the ingestion packages (no torch), the UI image has no Node.
+`scripts/compose-smoke.sh` checks the running stack (routes, headers, non-root users, no
+ingestion packages, image size budgets); CI runs it on every push.
 
 For development, with reload on every change:
 

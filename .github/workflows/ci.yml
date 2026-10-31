@@ -93,3 +93,34 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  docker:
+    # Builds both images, starts the whole stack as `docker compose up` does locally, and
+    # checks it from the outside. Example settings only: no keys, no model calls.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Settings from the example file
+        run: cp .env.example .env
+
+      - name: Build the images
+        run: docker compose build
+
+      - name: Start the stack and wait for every healthcheck
+        run: docker compose up -d --wait
+
+      - name: Smoke test (routes, headers, non-root, no torch, size budgets)
+        run: scripts/compose-smoke.sh
+
+      - name: Logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Stop
+        if: always()
+        run: docker compose down -v
