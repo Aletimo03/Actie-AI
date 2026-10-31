@@ -38,6 +38,20 @@ uv run --env-file .env pytest # run the tests (database tests need the compose s
 
 ## Running the app
 
+The whole stack (Postgres, the API, the UI behind nginx) with one command:
+
+```bash
+docker compose up -d --build --wait   # then open http://localhost:8080
+```
+
+The API reads its settings from `.env` (`LLM_MODEL` and the provider's key, `QUOTA_*`); the
+law must be loaded into the database once (see "Ingestion pipeline"), and the `pgdata`
+volume keeps it. Only the UI (`127.0.0.1:8080`) and the database (`127.0.0.1:5432`, for
+ingestion) are published, both on this machine only. The images run as non-root users;
+the API image leaves out the ingestion packages (no torch), the UI image has no Node.
+
+For development, with reload on every change:
+
 ```bash
 uv run --env-file .env uvicorn backend.app.api:app --reload  # API on :8000, docs at /docs
 cd frontend && npm ci && npm run dev                          # UI on :5173, /api proxied to :8000
@@ -95,7 +109,8 @@ ingestion/              offline pipeline: fetch, parse, chunk, validate, embed, 
 backend/app/retrieval/  vector, keyword and hybrid search, re-ranking
 backend/app/agent/      the LangGraph assessment: checks, role, obligations, citations
 backend/app/api.py      HTTP API: start, answer, continue, stream progress (SSE)
-frontend/               React UI; src/api/ holds the client and the generated types
+frontend/               React UI; src/api/ holds the client and the generated types;
+                        Dockerfile and nginx/ for the image
 db/init/                SQL run once when the database is created
 tests/                  pytest suite
 ```

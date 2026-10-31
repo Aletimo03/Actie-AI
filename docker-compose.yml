@@ -1,13 +1,18 @@
+# The whole app: `docker compose up -d --build`, then http://localhost:8080.
+# Settings come from .env (see .env.example); the law must be loaded into the database
+# once (README, "Ingestion pipeline"), and the pgdata volume keeps it.
 services:
   db:
-    image: pgvector/pgvector:pg16
+    # Pinned by digest: the image the pgdata volume was created with.
+    image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
     container_name: actie-db
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # For ingestion and tools on this machine only, never the local network.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -16,6 +21,33 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: actie-api:local
+    env_file: .env
+    environment:
+      # Inside the network the database is the `db` service, not localhost.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      LLM_CACHE_DIR: ""  # never keep users' descriptions on disk
+    depends_on:
+      db:
+        condition: service_healthy
+    # No ports: only nginx reaches it, which is also why it may trust X-Forwarded-For.
+    restart: unless-stopped
+
+  web:
+    build: frontend
+    image: actie-web:local
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8080}:8080"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   pgdata:
