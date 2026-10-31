@@ -57,3 +57,39 @@ jobs:
 
       - name: Test
         run: uv run pytest -q
+
+      - name: API spec matches the committed one (the frontend's types come from it)
+        run: uv run python -m backend.app.openapi | diff - frontend/openapi.json
+
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1  # v7.1.0
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (exactly as locked, no install scripts)
+        run: npm ci
+
+      - name: Generated types match the API spec
+        run: npx openapi-typescript openapi.json -o "$RUNNER_TEMP/schema.d.ts" && diff "$RUNNER_TEMP/schema.d.ts" src/api/schema.d.ts
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
