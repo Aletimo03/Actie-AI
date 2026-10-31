@@ -19,8 +19,10 @@ claim cited to the official text.
 
 ## Stack
 
-Python 3.12 · uv · Postgres 16 + pgvector · Ollama (`bge-m3` embeddings) ·
-Docker Compose · pytest · ruff
+Python 3.12 · uv · LangGraph · LiteLLM · FastAPI · Postgres 16 + pgvector ·
+Ollama (`bge-m3` embeddings) · Docker Compose · pytest · ruff
+
+Frontend: React 19 · TypeScript · Vite · Tailwind CSS · TanStack Query · Vitest
 
 ## Local setup
 
@@ -33,6 +35,18 @@ docker compose up -d          # start Postgres + pgvector
 ollama pull bge-m3            # embedding model, ~1.2 GB
 uv run --env-file .env pytest # run the tests (database tests need the compose stack)
 ```
+
+## Running the app
+
+```bash
+uv run --env-file .env uvicorn backend.app.api:app --reload  # API on :8000, docs at /docs
+cd frontend && npm ci && npm run dev                          # UI on :5173, /api proxied to :8000
+```
+
+Requires Node 24 or newer. `frontend/.npmrc` installs only package versions at least
+14 days old and runs no install scripts. After changing the API's models, run
+`npm run types` in `frontend/` to regenerate `openapi.json` and the TypeScript types;
+CI fails if they are stale.
 
 ## Ingestion pipeline
 
@@ -79,6 +93,9 @@ question on an M-series GPU.
 ```
 ingestion/              offline pipeline: fetch, parse, chunk, validate, embed, load
 backend/app/retrieval/  vector, keyword and hybrid search, re-ranking
+backend/app/agent/      the LangGraph assessment: checks, role, obligations, citations
+backend/app/api.py      HTTP API: start, answer, continue, stream progress (SSE)
+frontend/               React UI; src/api/ holds the client and the generated types
 db/init/                SQL run once when the database is created
 tests/                  pytest suite
 ```

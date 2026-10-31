@@ -9,6 +9,10 @@ __pycache__/
 dist/
 build/
 
+# Node (frontend/)
+node_modules/
+*.tsbuildinfo
+
 # Secrets: never commit real settings
 .env
 .env.*
