@@ -1,0 +1,743 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Actie AI",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/assessments": {
+      "post": {
+        "summary": "Start",
+        "operationId": "start_assessments_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/{id}/answers": {
+      "post": {
+        "summary": "Answer",
+        "operationId": "answer_assessments__id__answers_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/{id}/continue": {
+      "post": {
+        "summary": "Resume",
+        "operationId": "resume_assessments__id__continue_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/stream": {
+      "post": {
+        "summary": "Start Streaming",
+        "operationId": "start_streaming_assessments_stream_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssessRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/{id}/answers/stream": {
+      "post": {
+        "summary": "Answer Streaming",
+        "operationId": "answer_streaming_assessments__id__answers_stream_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnswersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/{id}/continue/stream": {
+      "post": {
+        "summary": "Resume Streaming",
+        "operationId": "resume_streaming_assessments__id__continue_stream_post",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assessments/{id}": {
+      "get": {
+        "summary": "Read",
+        "operationId": "read_assessments__id__get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssessmentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnswersRequest": {
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 1000
+            },
+            "type": "object",
+            "maxProperties": 20,
+            "title": "Answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "answers"
+        ],
+        "title": "AnswersRequest"
+      },
+      "AssessRequest": {
+        "properties": {
+          "description": {
+            "type": "string",
+            "maxLength": 4000,
+            "minLength": 20,
+            "title": "Description"
+          },
+          "lang": {
+            "type": "string",
+            "enum": [
+              "en",
+              "it"
+            ],
+            "title": "Lang",
+            "default": "en"
+          }
+        },
+        "type": "object",
+        "required": [
+          "description"
+        ],
+        "title": "AssessRequest"
+      },
+      "AssessmentOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "needs_answers",
+              "done",
+              "incomplete"
+            ],
+            "title": "Status"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOut"
+            },
+            "type": "array",
+            "title": "Questions",
+            "default": []
+          },
+          "report": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Report"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "AssessmentOut"
+      },
+      "Citation": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "quote": {
+            "type": "string",
+            "title": "Quote"
+          },
+          "claim": {
+            "type": "string",
+            "title": "Claim"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified",
+            "default": false
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "quote",
+          "claim"
+        ],
+        "title": "Citation"
+      },
+      "DutyOut": {
+        "properties": {
+          "situation": {
+            "type": "string",
+            "title": "Situation",
+            "description": "The Art. 50 situation, e.g. interacts, deepfake"
+          },
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "who": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "deployer"
+            ],
+            "title": "Who"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "situation",
+          "chunk_id",
+          "who",
+          "text"
+        ],
+        "title": "DutyOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ObligationOut": {
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "title": "Chunk Id"
+          },
+          "who": {
+            "type": "string",
+            "enum": [
+              "provider",
+              "deployer"
+            ],
+            "title": "Who"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "applies_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Applies From"
+          },
+          "in_force": {
+            "type": "boolean",
+            "title": "In Force",
+            "description": "Already applies on the day of the assessment"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition",
+            "description": "A fact the user must check for it to apply"
+          },
+          "verified": {
+            "type": "boolean",
+            "title": "Verified",
+            "description": "The article exists in the current law text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_id",
+          "who",
+          "text",
+          "applies_from",
+          "in_force",
+          "condition",
+          "verified"
+        ],
+        "title": "ObligationOut"
+      },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "text"
+        ],
+        "title": "QuestionOut"
+      },
+      "Report": {
+        "properties": {
+          "risk": {
+            "type": "string",
+            "enum": [
+              "prohibited",
+              "high",
+              "limited",
+              "minimal"
+            ],
+            "title": "Risk"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "provider",
+                  "deployer",
+                  "provider_and_deployer"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "None when the description did not say"
+          },
+          "became_provider": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Became Provider",
+            "description": "Art. 25(1) points that make them a provider"
+          },
+          "banned": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Banned",
+            "description": "Art. 5(1) points found to apply"
+          },
+          "high_risk_basis": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "High Risk Basis",
+            "description": "Chunk ids of the rules that make it high-risk"
+          },
+          "exception": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exception",
+            "description": "The Art. 6(3) condition that took it out"
+          },
+          "transparency_duties": {
+            "items": {
+              "$ref": "#/components/schemas/DutyOut"
+            },
+            "type": "array",
+            "title": "Transparency Duties"
+          },
+          "other_role_duties": {
+            "items": {
+              "$ref": "#/components/schemas/DutyOut"
+            },
+            "type": "array",
+            "title": "Other Role Duties",
+            "description": "The other role's duties, for context"
+          },
+          "uncertain": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Uncertain",
+            "description": "Findings the model could not settle"
+          },
+          "assumed_unknown": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumed Unknown",
+            "description": "Facts the description did not give"
+          },
+          "obligations": {
+            "items": {
+              "$ref": "#/components/schemas/ObligationOut"
+            },
+            "type": "array",
+            "title": "Obligations"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "type": "array",
+            "title": "Citations"
+          },
+          "unverified": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unverified",
+            "description": "Chunk ids whose quote or article was not found"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "risk",
+          "role",
+          "became_provider",
+          "banned",
+          "high_risk_basis",
+          "exception",
+          "transparency_duties",
+          "other_role_duties",
+          "uncertain",
+          "assumed_unknown",
+          "obligations",
+          "notes",
+          "citations",
+          "unverified"
+        ],
+        "title": "Report",
+        "description": "The report node's dict, typed for /docs and the frontend's generated types."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
