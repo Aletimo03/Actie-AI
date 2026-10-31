@@ -35,7 +35,7 @@ from pathlib import Path
 from typing import Protocol, TypeVar
 
 import litellm
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 LLM_MODEL = os.environ.get("LLM_MODEL", "ollama_chat/gemma4:12b")
 LLM_FALLBACKS = [m for m in os.environ.get("LLM_FALLBACKS", "").split(",") if m]
@@ -131,6 +131,22 @@ def strip_fences(text: str) -> str:
     return FENCE.sub("", text.strip())
 
 
+def parse[M: BaseModel](text: str, schema: type[M]) -> M:
+    """The reply as `schema`, rejecting keys the schema does not have.
+
+    Every field has a default, so a reply that echoes the schema itself
+    ({"properties": ...}) would validate as an empty result. Measured on
+    claude-haiku-5-5: after a follow-up answer it sent the Facts schema back,
+    every fact became None and the run started asking basic questions again.
+    """
+    data = json.loads(text)
+    if isinstance(data, dict) and (unknown := set(data) - set(schema.model_fields)):
+        raise ValueError(
+            f"unknown fields {sorted(unknown)}: fill in the values, do not repeat the schema"
+        )
+    return schema.model_validate(data)
+
+
 class LLM:
     def __init__(
         self,
@@ -173,8 +189,8 @@ class LLM:
         for _ in range(SCHEMA_RETRIES + 1):
             content = self.complete(messages, schema)
             try:
-                reply = schema.model_validate_json(strip_fences(content))
-            except ValidationError as error:
+                reply = parse(strip_fences(content), schema)
+            except ValueError as error:  # bad JSON, a schema echo, or ValidationError
                 last_error = error
                 messages += [
                     {"role": "assistant", "content": content},

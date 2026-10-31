@@ -1,3 +1,4 @@
+import json
 import os
 from types import SimpleNamespace
 from typing import Literal
@@ -83,6 +84,13 @@ def test_invalid_reply_is_retried_once_with_the_error():
     assert [m["role"] for m in retry] == ["system", "user", "assistant", "user"]
     assert retry[2]["content"] == INVALID
     assert "risk" in retry[3]["content"]  # the validation error names the bad field
+
+
+def test_a_reply_that_echoes_the_schema_is_retried_not_read_as_empty():
+    echo = json.dumps(Facts.model_json_schema())  # every Facts field has a default
+    llm, fake = make_llm(echo, VALID)
+    assert llm.ask("s", "u", Facts).risk == "prohibited"
+    assert "do not repeat the schema" in fake.calls[1]["messages"][3]["content"]
 
 
 def test_second_invalid_reply_raises():
