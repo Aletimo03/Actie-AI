@@ -1,5 +1,7 @@
 import json
 import os
+import subprocess
+import sys
 import uuid
 from contextlib import contextmanager
 
@@ -229,6 +231,15 @@ def test_over_the_limit_is_429_before_the_graph_runs(client):
         refused = client.post(path, json={"description": DESCRIPTION})
         assert refused.status_code == 429 and refused.headers["retry-after"] == "120"
     assert llm.prompts == []
+
+
+def test_the_api_runs_without_the_ingest_group():
+    """The API image installs without --group ingest: importing the app must not need it."""
+    heavy = ["torch", "sentence_transformers", "transformers", "bs4", "lxml", "pgvector"]
+    code = f"import sys, backend.app.api; print([m for m in {heavy} if m in sys.modules])"
+    # A fresh interpreter: this test process may have loaded them for other tests.
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "[]"
 
 
 def test_health_reports_the_database(client):

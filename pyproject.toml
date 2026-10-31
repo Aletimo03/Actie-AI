@@ -6,23 +6,20 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
 dependencies = [
-    "beautifulsoup4>=4.15.0",
     "fastapi==0.143.3",
     "httpx>=0.28.1",
     "langgraph==1.2.15",
     "langgraph-checkpoint-postgres==3.2.0",
     "litellm==1.105.1",
-    "lxml>=6.1.3",
-    "pgvector>=0.5.1",
     "psycopg-pool==3.3.3",
     "psycopg[binary]>=3.3.6",
     "pydantic>=2.11",
-    "sentence-transformers>=6.2.0",
     "uvicorn==0.54.0",
 ]
 
 [tool.uv]
 package = false
+default-groups = ["dev", "ingest"]  # a plain `uv sync` still installs everything
 # Transitive packages held to releases at least two weeks old (supply-chain cooldown).
 constraint-dependencies = ["starlette==1.8.0", "opentelemetry-api==1.45.1"]
 
@@ -39,6 +36,15 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP"]
 
 [dependency-groups]
+# What only the offline pipeline and the retrieval evals import (ingestion/, backend/app/
+# retrieval/): parsing EUR-Lex, pgvector, and the reranker with torch (~700 MB). The API
+# never imports them, so its image installs without this group (--no-group ingest).
+ingest = [
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.3",
+    "pgvector>=0.5.1",
+    "sentence-transformers>=6.2.0",
+]
 dev = [
     "pytest>=9.2.0",
     "ruff>=0.17.3",
