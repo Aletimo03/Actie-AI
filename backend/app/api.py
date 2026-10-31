@@ -3,9 +3,11 @@
 POST /assessments runs the graph until it pauses with questions or ends with
 the report; POST /assessments/{id}/answers resumes it from its checkpoint;
 GET /assessments/{id} reads it. The checkpoints live in Postgres, so a paused
-assessment survives a restart and any server can resume it.
+assessment survives a restart and any server can resume it. A run a provider
+error stopped is `incomplete`: POST /assessments/{id}/continue runs it on from
+the failed step, without paying again for the finished ones.
 
-The two POSTs have /stream twins that send Server-Sent Events while the graph
+The POSTs have /stream twins that send Server-Sent Events while the graph
 runs: `start` (the id), one `step` per finished node, then `result` (the same
 body as the JSON endpoints) or `error`. A report takes 20-40 s; the steps show
 it working. Errors found before the stream opens (422, 404, 409) stay HTTP
@@ -209,10 +211,15 @@ def stream(graph, value, id: str, lang: str) -> StreamingResponse:
     return StreamingResponse(events(), media_type="text/event-stream", headers=headers)
 
 
-def resume_value(graph, id: str, request: AnswersRequest) -> Command:
+def expect(graph, id: str, status: str) -> AssessmentOut:
     current = outcome(graph, id)
-    if current.status != "needs_answers":
-        raise HTTPException(409, f"the assessment is {current.status}, not waiting for answers")
+    if current.status != status:
+        raise HTTPException(409, f"the assessment is {current.status}, not {status}")
+    return current
+
+
+def resume_value(graph, id: str, request: AnswersRequest) -> Command:
+    current = expect(graph, id, "needs_answers")
     # Every pending question gets a reply, blank if skipped: an empty dict would not resume.
     return Command(resume={q.id: request.answers.get(q.id, "").strip() for q in current.questions})
 
@@ -228,6 +235,12 @@ def answer(id: str, request: AnswersRequest, graph: Graph) -> AssessmentOut:
     return run(graph, resume_value(graph, id, request), id)
 
 
+@app.post("/assessments/{id}/continue")
+def resume(id: str, graph: Graph) -> AssessmentOut:
+    expect(graph, id, "incomplete")
+    return run(graph, None, id)  # None: carry on from the last checkpoint
+
+
 @app.post("/assessments/stream")
 def start_streaming(request: AssessRequest, graph: Graph, _: Quota) -> StreamingResponse:
     value = {"description": request.description, "lang": request.lang}
@@ -239,6 +252,13 @@ def answer_streaming(id: str, request: AnswersRequest, graph: Graph) -> Streamin
     value = resume_value(graph, id, request)  # 404 and 409 before the stream opens
     lang = graph.get_state(config(id)).values["lang"]
     return stream(graph, value, id, lang)
+
+
+@app.post("/assessments/{id}/continue/stream")
+def resume_streaming(id: str, graph: Graph) -> StreamingResponse:
+    expect(graph, id, "incomplete")  # 404 and 409 before the stream opens
+    lang = graph.get_state(config(id)).values["lang"]
+    return stream(graph, None, id, lang)
 
 
 @app.get("/assessments/{id}")

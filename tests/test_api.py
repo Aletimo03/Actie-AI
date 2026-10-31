@@ -102,18 +102,41 @@ def test_unknown_and_finished_assessments(client):
     assert finished.status_code == 409 and "done" in finished.json()["detail"]
 
 
-def test_a_provider_failure_is_503_and_the_paused_state_is_kept(client):
-    class Down(ScriptedLLM):
-        def ask(self, system, user, schema):
-            if schema.__name__ == "ProhibitedCheck":
-                raise SchemaError("ProhibitedCheck: no valid reply after 2 attempts")
-            return super().ask(system, user, schema)
+class Flaky(ScriptedLLM):
+    """The provider fails the first `fails` Art. 5 checks, then recovers."""
 
-    serve(graph_over(Down(Facts=[UNKNOWN, KNOWN])))
+    def __init__(self, fails=1, **replies):
+        super().__init__(**replies)
+        self.fails = fails
+
+    def ask(self, system, user, schema):
+        if schema.__name__ == "ProhibitedCheck" and self.fails:
+            self.fails -= 1
+            raise SchemaError("ProhibitedCheck: no valid reply after 2 attempts")
+        return super().ask(system, user, schema)
+
+
+def test_a_provider_failure_is_503_and_continue_finishes_from_the_failed_step(client):
+    llm = Flaky(**scripted().replies)
+    serve(graph_over(llm))
     id = client.post("/assessments", json={"description": DESCRIPTION}).json()["id"]
+    assert client.post(f"/assessments/{id}/continue").status_code == 409  # paused, not stopped
+
     failed = client.post(f"/assessments/{id}/answers", json={"answers": {}})
     assert failed.status_code == 503 and failed.headers["retry-after"] == "60"
     assert client.get(f"/assessments/{id}").json()["status"] == "incomplete"
+    assert client.post(f"/assessments/{id}/answers", json={"answers": {}}).status_code == 409
+
+    asked = len(llm.prompts)
+    done = client.post(f"/assessments/{id}/continue")
+    assert done.status_code == 200 and done.json()["report"]["risk"] == "high"
+    # The facts were read before the failure: only the failed check and the ones after it run.
+    assert [name for name, _ in llm.prompts[asked:]] == [
+        "ProhibitedCheck", "HighRiskCheck", "TransparencyCheck",
+    ]  # fmt: skip
+    assert client.post(f"/assessments/{id}/continue").status_code == 409  # done
+    missing = "00000000-0000-4000-8000-000000000000"
+    assert client.post(f"/assessments/{missing}/continue").status_code == 404
 
 
 def events(response) -> list[tuple[str, dict]]:
@@ -153,6 +176,18 @@ def test_a_failure_after_the_stream_opens_is_an_error_event(client):
     sent = events(client.post("/assessments/stream", json={"description": DESCRIPTION}))
     assert [name for name, _ in sent] == ["start", "error"]
     assert sent[1][1]["retry_after"] == 60
+
+
+def test_a_stopped_run_continues_over_the_stream_too(client):
+    serve(graph_over(Flaky(**scripted(Facts=[KNOWN]).replies)))
+    sent = events(client.post("/assessments/stream", json={"description": DESCRIPTION}))
+    id = sent[0][1]["id"]
+    assert sent[-1][0] == "error"
+
+    done = events(client.post(f"/assessments/{id}/continue/stream"))
+    assert [d["step"] for name, d in done if name == "step"][0] == "check_prohibited"
+    assert done[-1][0] == "result" and done[-1][1]["status"] == "done"
+    assert client.post(f"/assessments/{id}/continue/stream").status_code == 409
 
 
 def test_streamed_answers_check_the_assessment_before_the_stream_opens(client):
