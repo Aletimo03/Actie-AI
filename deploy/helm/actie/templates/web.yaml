@@ -1,0 +1,65 @@
+{{- $name := printf "%s-web" (include "actie.fullname" .) -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "actie.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicas }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: {{- include "actie.selector" "web" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "actie.labels" . | nindent 8 }}
+        {{- include "actie.selector" "web" | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: 60  # nginx drains proxied streams too
+      securityContext: {{- include "actie.podSecurity" . | nindent 8 }}
+      containers:
+        - name: web
+          image: {{ include "actie.image" (list . "actie-web") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - name: API_UPSTREAM
+              value: http://{{ include "actie.fullname" . }}-api:8000
+            - name: REAL_IP_FROM
+              value: {{ .Values.web.realIpFrom | quote }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          lifecycle:
+            preStop:
+              sleep: { seconds: 5 }
+          resources: {{- toYaml .Values.web.resources | nindent 12 }}
+          securityContext: {{- include "actie.containerSecurity" . | nindent 12 }}
+          # Read-only image: nginx writes its config from the template, its pid and cache.
+          volumeMounts:
+            - { name: conf, mountPath: /etc/nginx/conf.d }
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: conf, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "actie.selector" "web" | nindent 4 }}
+  ports:
+    - { name: http, port: 8080, targetPort: http }

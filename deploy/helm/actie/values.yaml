@@ -1,0 +1,61 @@
+# Defaults for a real cluster. values-kind.yaml overrides what differs on the laptop.
+# Secrets are not here: create the Secret named in `secretName` before installing
+# (see deploy/kind/README.md). It holds ANTHROPIC_API_KEY, QUOTA_SECRET and, with the
+# in-cluster database, POSTGRES_PASSWORD (URL-safe: hex).
+
+image:
+  registry: ghcr.io/aletimo03  # empty: local images (kind load docker-image)
+  tag: main                    # deploy with --set image.tag=sha-<commit>, never a moving tag
+  pullPolicy: IfNotPresent
+  pullSecrets: []              # GHCR packages are private until made public
+
+secretName: actie-secrets
+
+api:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }  # no CPU limit: throttling a latency-bound server hurts more
+  env:
+    LLM_MODEL: anthropic/claude-haiku-5-5
+    LLM_FALLBACKS: ""
+    LLM_REASONING_EFFORT: ""
+    QUOTA_PER_HOUR: "10"
+    QUOTA_PER_DAY: "50"
+
+web:
+  replicas: 2
+  resources:
+    requests: { cpu: 20m, memory: 32Mi }
+    limits: { memory: 128Mi }
+  # The network the ingress controller's pods are on: X-Forwarded-For is trusted only
+  # from there (nginx real_ip), so quotas see the real client.
+  realIpFrom: 10.244.0.0/16
+
+ingress:
+  enabled: true
+  className: nginx
+  host: actie.example.com
+  tls: false
+
+postgres:
+  enabled: true  # false: an external database, DATABASE_URL in the Secret
+  image: pgvector/pgvector:pg16@sha256:7b822b0aac60967beb1ea5e576b8602c94c300a157d187f385ae3e0da199b90a
+  user: actie
+  database: actie
+  storage: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+
+law:
+  load: true  # a Job after every install/upgrade; skips a version already loaded
+
+retention:
+  enabled: true
+  schedule: "17 3 * * *"  # daily, 03:17 UTC
+  days: 30
+
+networkPolicy:
+  enabled: true
+  ingressNamespace: ingress-nginx  # where the ingress controller runs

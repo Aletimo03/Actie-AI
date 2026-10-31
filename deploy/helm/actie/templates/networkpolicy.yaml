@@ -1,0 +1,92 @@
+{{- if .Values.networkPolicy.enabled }}
+{{- $part := "app.kubernetes.io/part-of: actie" -}}
+# Nothing in or out unless allowed below. This is what makes the API's trust in
+# X-Forwarded-For safe: only nginx can reach it. (kind's default CNI doesn't enforce
+# NetworkPolicies; Calico or Cilium do.)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actie-default-deny
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/part-of: actie }
+  policyTypes: [Ingress, Egress]
+  egress:
+    - ports:  # DNS, for every pod
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actie-web
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "actie.selector" "web" | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: {{ .Values.networkPolicy.ingressNamespace }} }
+      ports: [{ port: 8080 }]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "actie.selector" "api" | nindent 14 }}
+      ports: [{ port: 8000 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actie-api
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "actie.selector" "api" | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:  # only nginx
+        - podSelector:
+            matchLabels: {{- include "actie.selector" "web" | nindent 14 }}
+      ports: [{ port: 8000 }]
+  egress:
+    - to:  # the LLM provider, over HTTPS; nothing else outside the cluster
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16]
+      ports: [{ port: 443 }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actie-db-clients
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: { actie.io/db-client: "true" }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: {{- include "actie.selector" "postgres" | nindent 14 }}
+      ports: [{ port: 5432 }]
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actie-postgres
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels: {{- include "actie.selector" "postgres" | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:  # the API and the jobs, nothing else
+        - podSelector:
+            matchLabels: { actie.io/db-client: "true" }
+      ports: [{ port: 5432 }]
+{{- end }}
+{{- end }}

@@ -1,0 +1,72 @@
+{{- if .Values.law.load }}
+# Loads the law from the snapshot after every install and upgrade: skips a version that
+# is already there (from an earlier run, or from real ingestion with real embeddings).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "actie.fullname" . }}-load-law
+  labels: {{- include "actie.labels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 6  # the database may still be starting on a first install
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "actie.labels" . | nindent 8 }}
+        {{- include "actie.selector" "load-law" | nindent 8 }}
+        actie.io/db-client: "true"
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext: {{- include "actie.podSecurity" . | nindent 8 }}
+      containers:
+        - name: load-law
+          {{- include "actie.jobContainer" . | nindent 10 }}
+          command: [python, -m, backend.app.law_snapshot, load]
+      volumes:
+        - { name: tmp, emptyDir: {} }
+{{- end }}
+{{- if .Values.retention.enabled }}
+---
+# Deletes assessments nobody has touched for retention.days: the description and the
+# answers are user data, kept only as long as someone may come back to their link.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "actie.fullname" . }}-retention
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.retention.schedule | quote }}
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            {{- include "actie.labels" . | nindent 12 }}
+            {{- include "actie.selector" "retention" | nindent 12 }}
+            actie.io/db-client: "true"
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          {{- with .Values.image.pullSecrets }}
+          imagePullSecrets: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext: {{- include "actie.podSecurity" . | nindent 12 }}
+          containers:
+            - name: retention
+              {{- include "actie.jobContainer" . | nindent 14 }}
+              command: [python, -m, backend.app.retention, --days, {{ .Values.retention.days | quote }}]
+          volumes:
+            - { name: tmp, emptyDir: {} }
+{{- end }}

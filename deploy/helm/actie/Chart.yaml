@@ -1,0 +1,6 @@
+apiVersion: v2
+name: actie
+description: "Actie AI, an EU AI Act assessment agent: the API, the UI behind nginx, Postgres, and the jobs that load the law and delete old assessments."
+type: application
+version: 0.1.0      # of the chart: moves when the templates change
+appVersion: "main"  # of the app: the image tag (sha-<commit>) is set per release

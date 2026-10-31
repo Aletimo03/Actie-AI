@@ -1,0 +1,100 @@
+{{- $name := printf "%s-api" (include "actie.fullname" .) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}
+  labels: {{- include "actie.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.api.env }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  LLM_CACHE_DIR: ""  # never keep users' descriptions on disk
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "actie.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  strategy:
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }  # a new pod is ready before an old one goes
+  selector:
+    matchLabels: {{- include "actie.selector" "api" | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "actie.labels" . | nindent 8 }}
+        {{- include "actie.selector" "api" | nindent 8 }}
+        actie.io/db-client: "true"
+      annotations:
+        # A changed setting rolls the pods; otherwise it waits for the next restart.
+        checksum/config: {{ toJson .Values.api.env | sha256sum }}
+    spec:
+      automountServiceAccountToken: false  # never calls the Kubernetes API
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      # Streams last 20-40 s; uvicorn gets 50 s to finish them after SIGTERM, then this.
+      terminationGracePeriodSeconds: 60
+      securityContext: {{- include "actie.podSecurity" . | nindent 8 }}
+      containers:
+        - name: api
+          image: {{ include "actie.image" (list . "actie-api") }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - { name: http, containerPort: 8000 }
+          envFrom:
+            - configMapRef: { name: {{ $name }} }
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: ANTHROPIC_API_KEY } }
+            - name: QUOTA_SECRET  # the same on every pod, or each hashes an IP differently
+              valueFrom: { secretKeyRef: { name: {{ .Values.secretName }}, key: QUOTA_SECRET } }
+            {{- include "actie.databaseEnv" . | nindent 12 }}
+          # Alive = the process answers (/livez, no database): a Postgres outage must not
+          # restart every pod. Ready = it can reach the database (/health): not ready means
+          # no traffic, not a restart.
+          startupProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /livez, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            preStop:
+              sleep: { seconds: 5 }  # let the Service drop this pod before it stops listening
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+          securityContext: {{- include "actie.containerSecurity" . | nindent 12 }}
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  selector: {{- include "actie.selector" "api" | nindent 4 }}
+  ports:
+    - { name: http, port: 8000, targetPort: http }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $name }}
+  labels: {{- include "actie.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1  # node maintenance never takes every API pod at once
+  selector:
+    matchLabels: {{- include "actie.selector" "api" | nindent 6 }}

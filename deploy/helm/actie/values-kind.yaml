@@ -1,0 +1,14 @@
+# kind: images built locally and loaded into the cluster, reached at http://actie.localhost
+image:
+  registry: ""
+  tag: local
+  pullPolicy: Never
+
+api:
+  replicas: 2
+
+ingress:
+  host: actie.localhost
+
+web:
+  realIpFrom: 10.244.0.0/16  # kind's pod network
