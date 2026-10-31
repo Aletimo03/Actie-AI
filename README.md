@@ -64,6 +64,23 @@ Requires Node 24 or newer. `frontend/.npmrc` installs only package versions at l
 `npm run types` in `frontend/` to regenerate `openapi.json` and the TypeScript types;
 CI fails if they are stale.
 
+## Kubernetes (kind)
+
+The same images on a local Kubernetes cluster, deployed with the Helm chart in
+[`deploy/helm/actie`](deploy/helm/actie): two API and two UI replicas, Postgres, Traefik
+as the ingress, a Job that loads the law, a daily CronJob that deletes assessments
+untouched for 30 days, and NetworkPolicies that let only nginx reach the API.
+
+```bash
+deploy/kind/up.sh   # needs kind, kubectl, helm; then http://actie.localhost:8088
+kind delete cluster --name actie
+```
+
+The script tags the images with the commit (plus a hash of uncommitted changes), creates
+the `actie-secrets` Secret once from `.env` (the model key) and random values (the quota
+secret, the database password), and installs the chart with `values-kind.yaml`. On a real
+cluster: `--set image.tag=sha-<commit>` with the images CI publishes to GHCR.
+
 ## Ingestion pipeline
 
 Each stage reads the previous stage's files and can be re-run on its own.
@@ -129,6 +146,7 @@ ingestion/              offline pipeline: fetch, parse, chunk, validate, embed, 
 backend/app/retrieval/  vector, keyword and hybrid search, re-ranking
 backend/app/agent/      the LangGraph assessment: checks, role, obligations, citations
 backend/app/api.py      HTTP API: start, answer, continue, stream progress (SSE)
+deploy/                 Helm chart (helm/actie) and the kind cluster (kind/)
 frontend/               React UI; src/api/ holds the client and the generated types;
                         Dockerfile and nginx/ for the image
 db/init/                SQL run once when the database is created

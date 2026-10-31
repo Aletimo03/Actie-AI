@@ -34,9 +34,13 @@ web:
 
 ingress:
   enabled: true
-  className: nginx
+  # Traefik: it streams responses without buffering (the progress events) and replaces a
+  # client's own X-Forwarded-For unless told to trust it. (ingress-nginx was retired in
+  # March 2026: no more releases or security fixes.)
+  className: traefik
   host: actie.example.com
   tls: false
+  annotations: {}  # controller-specific settings, e.g. timeouts
 
 postgres:
   enabled: true  # false: an external database, DATABASE_URL in the Secret
@@ -58,4 +62,4 @@ retention:
 
 networkPolicy:
   enabled: true
-  ingressNamespace: ingress-nginx  # where the ingress controller runs
+  ingressNamespace: traefik  # where the ingress controller runs

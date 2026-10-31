@@ -1,8 +1,9 @@
 {{- if .Values.networkPolicy.enabled }}
 {{- $part := "app.kubernetes.io/part-of: actie" -}}
 # Nothing in or out unless allowed below. This is what makes the API's trust in
-# X-Forwarded-For safe: only nginx can reach it. (kind's default CNI doesn't enforce
-# NetworkPolicies; Calico or Cilium do.)
+# X-Forwarded-For safe: only nginx can reach it. Needs a network plugin that enforces
+# policies: kind's own kindnet does (checked: a stray pod can reach neither the API nor
+# Postgres), as do Calico and Cilium.
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

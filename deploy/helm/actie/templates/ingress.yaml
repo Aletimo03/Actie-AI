@@ -4,11 +4,9 @@ kind: Ingress
 metadata:
   name: {{ include "actie.fullname" . }}
   labels: {{- include "actie.labels" . | nindent 4 }}
-  annotations:
-    # Progress is streamed (SSE): the controller must not buffer it either.
-    nginx.ingress.kubernetes.io/proxy-buffering: "off"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
-    nginx.ingress.kubernetes.io/proxy-body-size: 128k
+  {{- with .Values.ingress.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls }}

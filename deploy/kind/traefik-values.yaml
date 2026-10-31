@@ -1,0 +1,26 @@
+# Traefik as the ingress controller on kind: a NodePort the cluster config maps to the host.
+ports:
+  web:
+    nodePort: 30080
+  websecure:
+    expose:
+      default: false
+service:
+  type: NodePort
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+providers:
+  kubernetesIngress:
+    enabled: true
+  kubernetesCRD:
+    enabled: false
+# One replica, scheduled on the control-plane node, where the host port arrives.
+deployment:
+  replicas: 1
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule

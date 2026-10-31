@@ -1,0 +1,15 @@
+# A local Kubernetes cluster for the chart: kind create cluster --config deploy/kind/cluster.yaml
+# Traefik listens on node port 30080, mapped to http://actie.localhost:8088 on this machine
+# (bound to 127.0.0.1 only).
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: actie
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8088
+        listenAddress: 127.0.0.1
+        protocol: TCP
+  - role: worker
+  - role: worker
