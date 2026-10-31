@@ -1,5 +1,4 @@
 import json
-import os
 import subprocess
 import sys
 import uuid
@@ -248,6 +247,16 @@ def test_the_api_runs_without_the_ingest_group():
     assert out.stdout.strip() == "[]"
 
 
+def test_liveness_never_touches_the_database(client):
+    class Down:
+        def connection(self, timeout):
+            raise TimeoutError("no connection")
+
+    app.dependency_overrides[get_pool] = lambda: Down()
+    assert client.get("/livez").json() == {"status": "ok"}  # alive: don't restart me
+    assert client.get("/health").status_code == 503  # not ready: send no traffic
+
+
 def test_health_reports_the_database(client):
     class Pool:
         def __init__(self, error=None):
@@ -263,36 +272,6 @@ def test_health_reports_the_database(client):
     assert client.get("/health").json() == {"status": "ok"}
     app.dependency_overrides[get_pool] = lambda: Pool(TimeoutError("no connection"))
     assert client.get("/health").status_code == 503
-
-
-@pytest.fixture
-def checkpoint_db():
-    """Connections to a throwaway schema, set up like the API's checkpoint pool."""
-    psycopg = pytest.importorskip("psycopg")
-    from psycopg.rows import dict_row
-
-    url = os.environ.get("DATABASE_URL")
-    if not url:
-        pytest.skip("needs DATABASE_URL (uv run --env-file .env pytest)")
-    try:
-        admin = psycopg.connect(url, autocommit=True)
-    except psycopg.OperationalError:
-        pytest.skip("database not running (docker compose up -d)")
-    schema = f"test_{uuid.uuid4().hex[:8]}"
-    admin.execute(f"CREATE SCHEMA {schema}")
-    opened = []
-
-    def connect():
-        conn = psycopg.connect(url, autocommit=True, row_factory=dict_row)
-        conn.execute(f"SET search_path TO {schema}")
-        opened.append(conn)
-        return conn
-
-    yield connect
-    for conn in opened:
-        conn.close()
-    admin.execute(f"DROP SCHEMA {schema} CASCADE")
-    admin.close()
 
 
 def test_a_paused_assessment_survives_a_restart(client, checkpoint_db):

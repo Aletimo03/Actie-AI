@@ -334,6 +334,13 @@ def read(id: str, graph: Graph) -> AssessmentOut:
     return outcome(graph, id)
 
 
+@app.get("/livez")
+def live() -> dict:
+    """Liveness: the process answers. Unlike /health it never touches the database, so an
+    orchestrator that restarts failing pods doesn't restart them all when Postgres blinks."""
+    return {"status": "ok"}
+
+
 @app.get("/health")
 def health(pool: Annotated[ConnectionPool, Depends(get_pool)]) -> dict:
     try:

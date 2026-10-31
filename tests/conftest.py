@@ -53,3 +53,33 @@ def make_rows(texts: dict[str, str], lang: str = "en"):
     ]  # fmt: skip
     vectors = {content_hash(MODEL, c["embed_text"]): [1.0] + [0.0] * 1023 for c in chunks}
     return chunks, contexts, vectors
+
+
+@pytest.fixture
+def checkpoint_db():
+    """Connections to a throwaway schema, set up like the API's checkpoint pool."""
+    psycopg = pytest.importorskip("psycopg")
+    from psycopg.rows import dict_row
+
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip("needs DATABASE_URL (uv run --env-file .env pytest)")
+    try:
+        admin = psycopg.connect(url, autocommit=True)
+    except psycopg.OperationalError:
+        pytest.skip("database not running (docker compose up -d)")
+    schema = f"test_{uuid.uuid4().hex[:8]}"
+    admin.execute(f"CREATE SCHEMA {schema}")
+    opened = []
+
+    def connect():
+        conn = psycopg.connect(url, autocommit=True, row_factory=dict_row)
+        conn.execute(f"SET search_path TO {schema}")
+        opened.append(conn)
+        return conn
+
+    yield connect
+    for conn in opened:
+        conn.close()
+    admin.execute(f"DROP SCHEMA {schema} CASCADE")
+    admin.close()
