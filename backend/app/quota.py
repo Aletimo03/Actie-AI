@@ -1,10 +1,10 @@
 """Cost limits: how many new assessments one client, and everyone together, may start.
 
-Each report costs real money (about $0.002 on Claude Haiku 5.5), so a script
+Each report costs real money (about $0.005 on Claude Haiku 5.5), so a script
 could drain prepaid credits in minutes. Two limits, both counted in Postgres
 so they hold across processes and pods:
 - per client, in a sliding hour (QUOTA_PER_HOUR, default 10);
-- for everyone, per UTC day (QUOTA_PER_DAY, default 200).
+- for everyone, per UTC day (QUOTA_PER_DAY, default 50: at most about $0.25 a day).
 Only starting an assessment counts; answering its questions does not.
 
 A client is a keyed hash of its IP (HMAC with QUOTA_SECRET), never the IP:
@@ -38,7 +38,7 @@ SECRET = os.environ.get("QUOTA_SECRET", "").encode() or os.urandom(32)
 @dataclass(frozen=True)
 class Limits:
     per_hour: int = int(os.environ.get("QUOTA_PER_HOUR") or 10)
-    per_day: int = int(os.environ.get("QUOTA_PER_DAY") or 200)
+    per_day: int = int(os.environ.get("QUOTA_PER_DAY") or 50)
 
 
 class QuotaExceeded(Exception):
