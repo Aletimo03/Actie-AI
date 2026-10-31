@@ -6,6 +6,14 @@ export const LAW_VERSION = "2026-07-27"; // consolidated text in the database (0
 const en = {
   title: "EU AI Act check",
   headline: "What does the AI Act ask of your system?",
+  skip: "Skip to content",
+  flowLabel: "Progress",
+  flow: ["Describe", "Check", "Answer", "Report"],
+  nextStep: "Working on the next step",
+  elapsed: (seconds: number) => `${seconds} s · a full check usually takes 20–40 s`,
+  startOver: "Start over",
+  connectionLost: "The connection dropped. The check may have finished anyway.",
+  unreachable: "Actie AI can't be reached right now. Check your connection, or try again in a minute.",
   intro:
     "Describe your AI system: what it does, who uses it, who it affects. You get its risk level under the AI Act, your duties with their dates, and the articles behind each conclusion.",
   description: "Your AI system",
@@ -83,6 +91,14 @@ type Strings = typeof en;
 const it: Strings = {
   title: "Verifica AI Act",
   headline: "Cosa chiede l'AI Act al tuo sistema?",
+  skip: "Vai al contenuto",
+  flowLabel: "Avanzamento",
+  flow: ["Descrivi", "Verifica", "Rispondi", "Rapporto"],
+  nextStep: "Al lavoro sul passo successivo",
+  elapsed: (seconds: number) => `${seconds} s · una verifica completa richiede di solito 20–40 s`,
+  startOver: "Ricomincia",
+  connectionLost: "La connessione si è interrotta. La verifica potrebbe essere comunque terminata.",
+  unreachable: "Actie AI non è raggiungibile al momento. Controlla la connessione o riprova tra un minuto.",
   intro:
     "Descrivi il tuo sistema di IA: cosa fa, chi lo usa, chi riguarda. Ottieni il livello di rischio secondo l'AI Act, i tuoi obblighi con le date e gli articoli dietro ogni conclusione.",
   description: "Il tuo sistema di IA",

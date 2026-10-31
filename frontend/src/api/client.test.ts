@@ -55,6 +55,12 @@ describe("readEvents", () => {
 });
 
 describe("requests", () => {
+  it("leaves a proxy's error page out of the message", async () => {
+    respond(new Response("<html>Bad Gateway</html>", { status: 502, statusText: "Bad Gateway" }));
+    const error = await getAssessment("a1").catch((e) => e);
+    expect(error).toMatchObject({ status: 502, message: "" });
+  });
+
   afterEach(() => vi.unstubAllGlobals());
 
   function respond(response: Response) {

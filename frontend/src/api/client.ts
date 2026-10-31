@@ -36,13 +36,13 @@ export class ApiError extends Error {
 }
 
 async function failure(response: Response): Promise<ApiError> {
-  let message = response.statusText;
+  let message = ""; // no JSON body (a proxy's 502, say): the UI explains it in words
   try {
     const { detail } = await response.json();
     // FastAPI: a string for our errors, a list of {loc, msg} for a 422.
     message = typeof detail === "string" ? detail : detail.map((d: { msg: string }) => d.msg).join("; ");
   } catch {
-    // not JSON: keep the status text
+    // not from our API
   }
   const retry = Number(response.headers.get("Retry-After"));
   return new ApiError(response.status, message, retry > 0 ? retry : null);

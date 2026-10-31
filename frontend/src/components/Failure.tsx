@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { CircleAlert } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Lang } from "@/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -23,13 +24,21 @@ export function Failure({ lang, message, retry, retryAfter, onRetry, onNew }: Pr
     return () => clearTimeout(timer);
   }, [wait]);
 
+  const heading = useRef<HTMLDivElement>(null);
+  useEffect(() => heading.current?.focus(), []);
+
   const title = retry === "new" ? t.notFoundTitle : t.failedTitle;
   return (
     <div className="space-y-4">
-      <Alert variant="destructive">
-        <AlertTitle>{title}</AlertTitle>
-        <AlertDescription>
+      <Alert variant="destructive" className="border-destructive/40 bg-red-50">
+        <CircleAlert aria-hidden />
+        <AlertTitle ref={heading} tabIndex={-1} className="font-serif text-xl outline-none">
+          {title}
+        </AlertTitle>
+        <AlertDescription className="text-base">
           {retry === "continue" && <p>{t.stopped}</p>}
+          {retry === "reload" && !message && <p>{t.connectionLost}</p>}
+          {retry === "start" && !message && <p>{t.unreachable}</p>}
           {message && retry !== "new" && <p>{message}</p>}
         </AlertDescription>
       </Alert>

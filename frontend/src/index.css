@@ -31,6 +31,8 @@
   --ring: #7f5a12;
   --gold: #c9a04e;
   --gold-ink: #7f5a12;
+  --focus: var(--ring); /* 5.8:1 on ivory; the header sets the bright gold, 7.0:1 on ink */
+  color-scheme: light; /* no dark theme yet: keep form controls light too */
 }
 
 @theme inline {
@@ -94,4 +96,11 @@
       transition-duration: 0.01ms !important;
     }
   }
+}
+
+/* Focus must show at 3:1 or more (WCAG 1.4.11). shadcn's ring is the token at 50%
+   opacity, about 2.2:1 on ivory, so every focusable element gets a solid outline. */
+:focus-visible {
+  outline: 2px solid var(--focus) !important;
+  outline-offset: 2px;
 }

@@ -35,8 +35,8 @@ export function DescribeForm({ lang, onLang, initial, error, onSubmit }: Props) 
       }}
     >
       <div className="space-y-2">
-        <h2 className="text-3xl font-semibold sm:text-4xl">{t.headline}</h2>
-        <p className="text-muted-foreground">{t.intro}</p>
+        <h2 className="text-3xl font-semibold text-balance sm:text-4xl">{t.headline}</h2>
+        <p className="max-w-prose text-muted-foreground">{t.intro}</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor={field}>{t.description}</Label>

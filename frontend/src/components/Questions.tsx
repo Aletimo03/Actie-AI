@@ -9,9 +9,10 @@ type Props = {
   questions: Question[];
   lang: Lang;
   onSubmit: (answers: Record<string, string>) => void;
+  onNew: () => void;
 };
 
-export function Questions({ questions, lang, onSubmit }: Props) {
+export function Questions({ questions, lang, onSubmit, onNew }: Props) {
   const t = STRINGS[lang];
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const heading = useRef<HTMLHeadingElement>(null);
@@ -29,7 +30,7 @@ export function Questions({ questions, lang, onSubmit }: Props) {
         <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">
           {t.questionsTitle}
         </h2>
-        <p className="text-sm text-muted-foreground">{t.questionsIntro}</p>
+        <p className="max-w-prose text-muted-foreground">{t.questionsIntro}</p>
       </div>
       {questions.map((question) => (
         <div key={question.id} className="space-y-2">
@@ -45,7 +46,12 @@ export function Questions({ questions, lang, onSubmit }: Props) {
           />
         </div>
       ))}
-      <Button type="submit">{t.continue}</Button>
+      <div className="flex flex-wrap gap-3">
+        <Button type="submit">{t.continue}</Button>
+        <Button type="button" variant="ghost" onClick={onNew}>
+          {t.startOver}
+        </Button>
+      </div>
     </form>
   );
 }

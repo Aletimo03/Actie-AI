@@ -100,3 +100,45 @@ it("names the page, with the logo as decoration", () => {
   expect(screen.getByRole("heading", { level: 1, name: "Actie AI" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: /Actie AI/ }).querySelector("img")).toHaveAttribute("alt", "");
 });
+
+it("shows where the user is, skips to the content and focuses the result", async () => {
+  vi.mocked(client.startAssessment).mockReturnValue(stream({ event: "result", data: done }));
+  render(<App />);
+  expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#main");
+  expect(screen.getByRole("navigation", { name: "Progress" }).querySelector("[aria-current=step]"))
+    .toHaveTextContent("Describe");
+
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Your AI system"), "A bank scores consumers' credit-worthiness.");
+  await user.click(screen.getByRole("button", { name: "Check my system" }));
+  const result = await screen.findByRole("heading", { level: 2, name: "High risk" });
+  expect(result).toHaveFocus();
+  expect(screen.getByRole("navigation", { name: "Progress" }).querySelector("[aria-current=step]"))
+    .toHaveTextContent("Report");
+});
+
+it("explains a dropped connection in words and offers to read the result", async () => {
+  vi.mocked(client.startAssessment).mockReturnValue(
+    (async function* () {
+      yield { event: "start", data: { id: ID } } as StreamEvent;
+      throw new TypeError("Failed to fetch");
+    })(),
+  );
+  await describeSystem();
+  expect(await screen.findByText(/The connection dropped/)).toBeInTheDocument();
+  expect(screen.queryByText(/Failed to fetch/)).toBeNull();
+  vi.mocked(client.getAssessment).mockResolvedValue(done);
+  await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(client.getAssessment).toHaveBeenCalledWith(ID); // reads it, doesn't start (and pay) again
+  expect(client.startAssessment).toHaveBeenCalledTimes(1);
+});
+
+it("lets the user start over from the questions", async () => {
+  vi.mocked(client.startAssessment).mockReturnValue(
+    stream({ event: "result", data: { id: ID, status: "needs_answers", questions: [{ id: "role", text: "Did you build it?" }] } }),
+  );
+  const user = await describeSystem();
+  await user.click(await screen.findByRole("button", { name: "Start over" }));
+  expect(screen.getByLabelText("Your AI system")).toBeInTheDocument();
+  expect(location.pathname).toBe("/");
+});

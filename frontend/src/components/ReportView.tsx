@@ -3,7 +3,7 @@
  * React escapes it, so an injected "<img onerror=...>" is shown, not run.
  */
 import { Ban, CircleCheck, Info, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Citation, Lang, Obligation, Report } from "@/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,8 @@ export function ReportView({ report, lang, onNew }: Props) {
 
   // The Art. 50 duties are usually among the obligations already, with their dates.
   const style = RISK_STYLE[report.risk];
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus(), []); // the result replaced the steps: say so
   const listed = new Set(report.obligations.map((o) => `${o.chunk_id} ${o.who}`));
   const extraDuties = report.transparency_duties.filter((d) => !listed.has(`${d.chunk_id} ${d.who}`));
 
@@ -42,7 +44,9 @@ export function ReportView({ report, lang, onNew }: Props) {
       <header className={cn("flex gap-4 rounded-xl border-2 p-5", style.box)}>
         <style.Icon aria-hidden className="mt-1 size-8 shrink-0" />
         <div className="space-y-1">
-          <h2 className="text-3xl font-semibold">{t.risk[report.risk]}</h2>
+          <h2 ref={heading} tabIndex={-1} className="text-3xl font-semibold outline-none">
+            {t.risk[report.risk]}
+          </h2>
           <p>{t.riskMeaning[report.risk]}</p>
           <p className="font-bold">{t.role[report.role ?? "unknown"]}</p>
         </div>
@@ -232,7 +236,7 @@ function Source({ citation, lang }: { citation: Citation; lang: Lang }) {
       <blockquote className="border-l-2 border-gold pl-3 font-serif text-base text-muted-foreground italic">
         “{citation.quote}”
       </blockquote>
-      {citation.note && <p className="text-xs text-muted-foreground">{citation.note}</p>}
+      {citation.note && <p className="text-sm text-muted-foreground">{citation.note}</p>}
     </li>
   );
 }
@@ -246,8 +250,12 @@ function ShareLink({ lang }: { lang: Lang }) {
         variant="secondary"
         size="sm"
         onClick={async () => {
-          await navigator.clipboard.writeText(location.href);
-          setCopied(true);
+          try {
+            await navigator.clipboard.writeText(location.href);
+            setCopied(true);
+          } catch {
+            // no clipboard (insecure page, permission): the address bar still has the link
+          }
         }}
       >
         {copied ? t.copied : t.copyLink}

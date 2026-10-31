@@ -12,6 +12,7 @@ import { DescribeForm } from "@/components/DescribeForm";
 import { Failure } from "@/components/Failure";
 import { Progress } from "@/components/Progress";
 import { Questions } from "@/components/Questions";
+import { Steps } from "@/components/Steps";
 import { ReportView } from "@/components/ReportView";
 import { STRINGS, initialLang } from "@/i18n";
 import { type Action, type View, reduce } from "@/state";
@@ -116,11 +117,17 @@ export function App() {
 
   return (
     <div className="min-h-svh">
-      <header className="border-b-2 border-gold bg-primary text-primary-foreground">
+      <a
+        href="#main"
+        className="sr-only z-10 rounded-md bg-card font-bold focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:px-4 focus:py-3"
+      >
+        {t.skip}
+      </a>
+      <header className="border-b-2 border-gold bg-primary text-primary-foreground [--focus:var(--gold)]">
         <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-4 sm:px-6">
           <a
             href="/"
-            className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
+            className="flex items-center gap-3 rounded-lg"
             onClick={(event) => (event.preventDefault(), newAssessment())}
           >
             <img src="/actie-160.png" alt="" width={56} height={53} className="size-14 rounded-xl" />
@@ -131,7 +138,8 @@ export function App() {
           </a>
         </div>
       </header>
-      <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl space-y-6 px-4 py-8 outline-none sm:px-6">
+        <Steps view={view} lang={lang} />
         {view.kind === "describing" && (
           <DescribeForm lang={lang} onLang={changeLang} initial={description} error={view.error} onSubmit={start} />
         )}
@@ -143,6 +151,7 @@ export function App() {
             questions={view.questions}
             lang={lang}
             onSubmit={(answers) => follow(view.id, (signal) => sendAnswers(view.id, answers, signal))}
+            onNew={newAssessment}
           />
         )}
         {view.kind === "done" && <ReportView report={view.report} lang={lang} onNew={newAssessment} />}
@@ -184,14 +193,14 @@ function toAction(event: StreamEvent): Action {
 function failure(error: unknown, id: string | null): Action {
   if (!(error instanceof ApiError)) {
     // The connection dropped: the run may have finished on the server, so read it.
-    return { type: "failed", message: String(error), retry: id ? "reload" : "start" };
+    return { type: "failed", message: null, retry: id ? "reload" : "start" };
   }
   if (error.status === 422) return { type: "invalid", message: error.message };
   if (error.status === 404) return { type: "failed", message: error.message, retry: "new" };
   if (error.status === 409) return { type: "failed", message: error.message, retry: "reload" };
   return {
     type: "failed",
-    message: error.message,
+    message: error.message || null,
     retry: id ? "continue" : "start",
     retryAfter: error.retryAfter,
   };

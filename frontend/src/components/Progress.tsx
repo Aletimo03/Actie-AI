@@ -1,9 +1,17 @@
-import { Check } from "lucide-react";
+import { Check, LoaderCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { Lang } from "@/api/client";
 import { STRINGS } from "@/i18n";
 
-/** The finished steps, announced to screen readers as they arrive. */
+/** The finished steps, announced to screen readers as they arrive, and the one under way. */
 export function Progress({ steps, lang }: { steps: string[]; lang: Lang }) {
+  const t = STRINGS[lang];
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   return (
     <section aria-labelledby="progress-title" className="flex flex-col items-center gap-6 py-6 sm:flex-row sm:items-start">
       <img
@@ -15,7 +23,7 @@ export function Progress({ steps, lang }: { steps: string[]; lang: Lang }) {
       />
       <div className="w-full space-y-3">
         <h2 id="progress-title" className="text-2xl font-semibold">
-          {STRINGS[lang].working}…
+          {t.working}…
         </h2>
         <ol aria-live="polite" className="space-y-2">
           {steps.map((label, index) => (
@@ -25,6 +33,13 @@ export function Progress({ steps, lang }: { steps: string[]; lang: Lang }) {
             </li>
           ))}
         </ol>
+        <p className="flex items-center gap-2 text-muted-foreground">
+          <LoaderCircle aria-hidden className="size-4 motion-safe:animate-spin" />
+          {t.nextStep}…
+        </p>
+        <p className="text-sm text-muted-foreground tabular-nums" aria-hidden>
+          {t.elapsed(seconds)}
+        </p>
       </div>
     </section>
   );
