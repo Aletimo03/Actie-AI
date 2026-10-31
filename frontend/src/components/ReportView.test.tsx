@@ -49,8 +49,8 @@ describe("ReportView", () => {
       unverified: ["en_art99_p1"],
     };
     show(report);
-    expect(screen.getAllByText("✓ Verified in the law text")).toHaveLength(real.citations.length);
-    expect(screen.getAllByText("⚠ Not found in the law text")).toHaveLength(1);
+    expect(screen.getAllByText("Verified in the law text")).toHaveLength(real.citations.length);
+    expect(screen.getAllByText("Not found in the law text")).toHaveLength(1);
     expect(screen.getByText("Some sources could not be verified")).toBeInTheDocument();
   });
 

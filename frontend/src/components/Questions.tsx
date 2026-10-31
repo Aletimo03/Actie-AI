@@ -26,7 +26,7 @@ export function Questions({ questions, lang, onSubmit }: Props) {
       }}
     >
       <div>
-        <h2 ref={heading} tabIndex={-1} className="text-lg font-medium outline-none">
+        <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none">
           {t.questionsTitle}
         </h2>
         <p className="text-sm text-muted-foreground">{t.questionsIntro}</p>

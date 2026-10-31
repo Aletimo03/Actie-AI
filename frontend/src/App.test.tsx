@@ -94,3 +94,9 @@ it("opens an assessment from its link", async () => {
   expect(await screen.findByRole("heading", { level: 2, name: "High risk" })).toBeInTheDocument();
   await waitFor(() => expect(client.getAssessment).toHaveBeenCalledWith(ID));
 });
+
+it("names the page, with the logo as decoration", () => {
+  render(<App />);
+  expect(screen.getByRole("heading", { level: 1, name: "Actie AI" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: /Actie AI/ }).querySelector("img")).toHaveAttribute("alt", "");
+});

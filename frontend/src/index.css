@@ -1,26 +1,36 @@
 @import "tailwindcss";
+/* Self-hosted, Latin only (English and Italian): Google Fonts would send every visitor's IP address to Google. */
+@import "@fontsource/eb-garamond/latin-500.css";
+@import "@fontsource/eb-garamond/latin-600.css";
+@import "@fontsource/eb-garamond/latin-500-italic.css";
+@import "@fontsource/lato/latin-400.css";
+@import "@fontsource/lato/latin-700.css";
 
-/* shadcn/ui theme tokens (neutral): the components read these as bg-primary, border, ... */
+/* Theme tokens from the Actie icon: marble ivory, the icon's warm black as ink, brushed gold.
+   Contrast on ivory: ink 15.9:1, muted text 5.8:1, dark gold 5.8:1 (text and focus rings).
+   The bright gold is only used on ink (7.0:1). */
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --radius: 0.75rem;
+  --background: #faf6ee;
+  --foreground: #1f1b16;
+  --card: #fffdf8;
+  --card-foreground: #1f1b16;
+  --primary: #1f1b16;
+  --primary-foreground: #faf6ee;
+  --secondary: #f1e9da;
+  --secondary-foreground: #1f1b16;
+  --muted: #f1e9da;
+  --muted-foreground: #6a5f50;
+  --accent: #f1e9da;
+  --accent-foreground: #1f1b16;
+  --destructive: #b42318;
+  --border: #e6dcc8;
+  --input: #d9ccb2;
+  --ring: #7f5a12;
+  --gold: #c9a04e;
+  --gold-ink: #7f5a12;
 }
 
 @theme inline {
@@ -44,6 +54,20 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-ink: var(--gold-ink);
+  --font-serif: "EB Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 @layer base {
@@ -51,6 +75,23 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

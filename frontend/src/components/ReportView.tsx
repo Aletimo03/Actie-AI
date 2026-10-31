@@ -2,6 +2,7 @@
  * The report. Model text (quotes, claims, duties) is shown as text, never as HTML:
  * React escapes it, so an injected "<img onerror=...>" is shown, not run.
  */
+import { Ban, CircleCheck, Info, ShieldAlert, ShieldCheck, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import type { Citation, Lang, Obligation, Report } from "@/api/client";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -13,10 +14,10 @@ import { chunkLabel, uncertainLabel } from "@/lib/labels";
 import { cn } from "@/lib/utils";
 
 const RISK_STYLE = {
-  prohibited: "bg-red-100 text-red-900 border-red-300",
-  high: "bg-orange-100 text-orange-900 border-orange-300",
-  limited: "bg-yellow-100 text-yellow-900 border-yellow-300",
-  minimal: "bg-green-100 text-green-900 border-green-300",
+  prohibited: { box: "bg-red-50 text-red-950 border-red-300", Icon: Ban },
+  high: { box: "bg-orange-50 text-orange-950 border-orange-300", Icon: ShieldAlert },
+  limited: { box: "bg-amber-50 text-amber-950 border-amber-300", Icon: Info },
+  minimal: { box: "bg-emerald-50 text-emerald-950 border-emerald-300", Icon: ShieldCheck },
 };
 
 type Props = { report: Report; lang: Lang; onNew: () => void };
@@ -32,15 +33,19 @@ export function ReportView({ report, lang, onNew }: Props) {
   ];
 
   // The Art. 50 duties are usually among the obligations already, with their dates.
+  const style = RISK_STYLE[report.risk];
   const listed = new Set(report.obligations.map((o) => `${o.chunk_id} ${o.who}`));
   const extraDuties = report.transparency_duties.filter((d) => !listed.has(`${d.chunk_id} ${d.who}`));
 
   return (
     <article className="space-y-6">
-      <header className={cn("space-y-2 rounded-xl border p-5", RISK_STYLE[report.risk])}>
-        <h2 className="text-2xl font-semibold">{t.risk[report.risk]}</h2>
-        <p>{t.riskMeaning[report.risk]}</p>
-        <p className="font-medium">{t.role[report.role ?? "unknown"]}</p>
+      <header className={cn("flex gap-4 rounded-xl border-2 p-5", style.box)}>
+        <style.Icon aria-hidden className="mt-1 size-8 shrink-0" />
+        <div className="space-y-1">
+          <h2 className="text-3xl font-semibold">{t.risk[report.risk]}</h2>
+          <p>{t.riskMeaning[report.risk]}</p>
+          <p className="font-bold">{t.role[report.role ?? "unknown"]}</p>
+        </div>
       </header>
 
       {reasons.length > 0 && (
@@ -136,7 +141,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     <Card>
       <CardHeader>
         <CardTitle>
-          <h3>{title}</h3>
+          <h3 className="text-xl">{title}</h3>
         </CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
@@ -181,7 +186,7 @@ function Timeline({ obligations, lang }: { obligations: Obligation[]; lang: Lang
                     </Badge>
                   ))}
                   <span className="text-muted-foreground tabular-nums">{chunkLabel(o.chunk_id, lang)}</span>
-                  {!o.verified && <span className="text-destructive">⚠ {t.notFound}</span>}
+                  {!o.verified && <Unverified text={t.notFound} />}
                 </li>
               ))}
             </ul>
@@ -214,12 +219,19 @@ function Source({ citation, lang }: { citation: Citation; lang: Lang }) {
     <li className="space-y-1 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-medium">{chunkLabel(citation.chunk_id, lang)}</span>
-        <span className={verified ? "text-green-700" : "text-destructive"}>
-          {verified ? `✓ ${t.verified}` : `⚠ ${t.notFound}`}
-        </span>
+        {verified ? (
+          <span className="inline-flex items-center gap-1 text-emerald-800">
+            <CircleCheck aria-hidden className="size-4" />
+            {t.verified}
+          </span>
+        ) : (
+          <Unverified text={t.notFound} />
+        )}
       </div>
       <p>{citation.claim}</p>
-      <blockquote className="border-l-2 pl-3 text-muted-foreground italic">“{citation.quote}”</blockquote>
+      <blockquote className="border-l-2 border-gold pl-3 font-serif text-base text-muted-foreground italic">
+        “{citation.quote}”
+      </blockquote>
       {citation.note && <p className="text-xs text-muted-foreground">{citation.note}</p>}
     </li>
   );
@@ -242,6 +254,15 @@ function ShareLink({ lang }: { lang: Lang }) {
       </Button>
       <span>{t.linkWarning}</span>
     </p>
+  );
+}
+
+function Unverified({ text }: { text: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-destructive">
+      <TriangleAlert aria-hidden className="size-4" />
+      {text}
+    </span>
   );
 }
 

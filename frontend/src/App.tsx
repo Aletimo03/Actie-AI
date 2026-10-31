@@ -116,16 +116,22 @@ export function App() {
 
   return (
     <div className="min-h-svh">
+      <header className="border-b-2 border-gold bg-primary text-primary-foreground">
+        <div className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-4 sm:px-6">
+          <a
+            href="/"
+            className="flex items-center gap-3 rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-gold"
+            onClick={(event) => (event.preventDefault(), newAssessment())}
+          >
+            <img src="/actie-160.png" alt="" width={56} height={53} className="size-14 rounded-xl" />
+            <span>
+              <h1 className="text-3xl leading-none font-semibold">Actie AI</h1>
+              <span className="text-sm text-gold">{t.title}</span>
+            </span>
+          </a>
+        </div>
+      </header>
       <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
-        <header>
-          <h1 className="text-2xl font-semibold">
-            <a href="/" onClick={(event) => (event.preventDefault(), newAssessment())}>
-              Actie AI
-            </a>
-          </h1>
-          <p className="text-muted-foreground">{t.title}</p>
-        </header>
-
         {view.kind === "describing" && (
           <DescribeForm lang={lang} onLang={changeLang} initial={description} error={view.error} onSubmit={start} />
         )}

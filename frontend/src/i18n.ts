@@ -5,6 +5,7 @@ export const LAW_VERSION = "2026-07-27"; // consolidated text in the database (0
 
 const en = {
   title: "EU AI Act check",
+  headline: "What does the AI Act ask of your system?",
   intro:
     "Describe your AI system: what it does, who uses it, who it affects. You get its risk level under the AI Act, your duties with their dates, and the articles behind each conclusion.",
   description: "Your AI system",
@@ -81,6 +82,7 @@ type Strings = typeof en;
 
 const it: Strings = {
   title: "Verifica AI Act",
+  headline: "Cosa chiede l'AI Act al tuo sistema?",
   intro:
     "Descrivi il tuo sistema di IA: cosa fa, chi lo usa, chi riguarda. Ottieni il livello di rischio secondo l'AI Act, i tuoi obblighi con le date e gli articoli dietro ogni conclusione.",
   description: "Il tuo sistema di IA",

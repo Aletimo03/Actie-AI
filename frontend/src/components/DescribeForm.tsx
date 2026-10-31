@@ -34,14 +34,17 @@ export function DescribeForm({ lang, onLang, initial, error, onSubmit }: Props) 
         if (!tooShort) onSubmit(text.trim());
       }}
     >
-      <p className="text-muted-foreground">{t.intro}</p>
+      <div className="space-y-2">
+        <h2 className="text-3xl font-semibold sm:text-4xl">{t.headline}</h2>
+        <p className="text-muted-foreground">{t.intro}</p>
+      </div>
       <div className="space-y-2">
         <Label htmlFor={field}>{t.description}</Label>
         <Textarea
           id={field}
           value={text}
           maxLength={MAX}
-          rows={7}
+          className="min-h-40 bg-card text-base"
           placeholder={t.placeholder}
           aria-invalid={Boolean(message)}
           aria-describedby={`${field}-hint`}
