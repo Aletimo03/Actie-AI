@@ -22,7 +22,7 @@ claim cited to the official text.
 Python 3.12 · uv · LangGraph · LiteLLM · FastAPI · Postgres 16 + pgvector ·
 Ollama (`bge-m3` embeddings) · Docker Compose · pytest · ruff
 
-Frontend: React 19 · TypeScript · Vite · Tailwind CSS · TanStack Query · Vitest
+Frontend: React 19 · TypeScript · Vite · Tailwind CSS + shadcn/ui · Vitest
 
 ## Local setup
 
