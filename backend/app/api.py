@@ -34,6 +34,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 from pydantic import BaseModel, Field
 
+from backend.app import quota
 from backend.app.agent.citations import fetch_chunks
 from backend.app.agent.graph import SERDE, build_graph
 from backend.app.llm import LLM, SchemaError
@@ -103,6 +104,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         url, min_size=1, max_size=10, kwargs={"autocommit": True, "row_factory": dict_row}
     )
     law = ConnectionPool(url, min_size=1, max_size=10)
+    with law.connection() as conn:
+        conn.execute(quota.SCHEMA)
     checkpointer = PostgresSaver(checkpoints, serde=SERDE)
     checkpointer.setup()  # creates or migrates its tables; safe on every start
 
@@ -136,6 +139,21 @@ def get_pool(request: Request) -> ConnectionPool:
 
 
 Graph = Annotated[object, Depends(get_graph)]
+
+
+def check_quota(request: Request, pool: Annotated[ConnectionPool, Depends(get_pool)]) -> None:
+    """Count a new assessment against the cost limits, or refuse it with 429."""
+    client = quota.client_key(request.client.host if request.client else "unknown")
+    try:
+        with pool.connection() as conn:
+            quota.take(conn, client, quota.Limits(), quota.now())
+    except quota.QuotaExceeded as error:
+        raise HTTPException(
+            429, str(error), headers={"Retry-After": str(error.retry_after)}
+        ) from error
+
+
+Quota = Annotated[None, Depends(check_quota)]
 
 
 def config(id: str) -> dict:
@@ -200,7 +218,7 @@ def resume_value(graph, id: str, request: AnswersRequest) -> Command:
 
 
 @app.post("/assessments", status_code=201)
-def start(request: AssessRequest, graph: Graph) -> AssessmentOut:
+def start(request: AssessRequest, graph: Graph, _: Quota) -> AssessmentOut:
     id = str(uuid4())  # unguessable: the id is the key to the description and answers
     return run(graph, {"description": request.description, "lang": request.lang}, id)
 
@@ -211,7 +229,7 @@ def answer(id: str, request: AnswersRequest, graph: Graph) -> AssessmentOut:
 
 
 @app.post("/assessments/stream")
-def start_streaming(request: AssessRequest, graph: Graph) -> StreamingResponse:
+def start_streaming(request: AssessRequest, graph: Graph, _: Quota) -> StreamingResponse:
     value = {"description": request.description, "lang": request.lang}
     return stream(graph, value, str(uuid4()), request.lang)
 

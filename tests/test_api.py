@@ -4,12 +4,13 @@ import uuid
 from contextlib import contextmanager
 
 import pytest
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from langgraph.checkpoint.memory import InMemorySaver
 from test_graph import CLEAR, HIGH, KNOWN, NONE, TODAY, UNKNOWN, ScriptedLLM, fetch, lookup
 
 from backend.app.agent.graph import SERDE, build_graph
-from backend.app.api import app, get_graph, get_pool
+from backend.app.api import app, check_quota, get_graph, get_pool
 from backend.app.llm import SchemaError
 
 DESCRIPTION = "We built a tool that ranks job applicants' CVs for recruiters."
@@ -32,6 +33,7 @@ def graph_over(llm, checkpointer=None):
 
 @pytest.fixture
 def client():
+    app.dependency_overrides[check_quota] = lambda: None  # limits: tests/test_quota.py
     yield TestClient(app)  # no `with`: the lifespan (real pools, real LLM) never runs
     app.dependency_overrides.clear()
 
@@ -162,6 +164,20 @@ def test_streamed_answers_check_the_assessment_before_the_stream_opens(client):
     assert answer("00000000-0000-4000-8000-000000000000").status_code == 404
     id = client.post("/assessments", json={"description": DESCRIPTION}).json()["id"]
     assert answer(id).status_code == 409
+
+
+def test_over_the_limit_is_429_before_the_graph_runs(client):
+    llm = scripted()
+    serve(graph_over(llm))
+
+    def exceeded():
+        raise HTTPException(429, "limit reached", headers={"Retry-After": "120"})
+
+    app.dependency_overrides[check_quota] = exceeded
+    for path in ("/assessments", "/assessments/stream"):
+        refused = client.post(path, json={"description": DESCRIPTION})
+        assert refused.status_code == 429 and refused.headers["retry-after"] == "120"
+    assert llm.prompts == []
 
 
 def test_health_reports_the_database(client):
