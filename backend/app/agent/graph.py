@@ -228,6 +228,19 @@ def build_graph(
     checkpointer=None,
     today: Callable[[], date] = date.today,
 ):
+    def described(state: Assessment) -> str:
+        """The description plus every answer so far, for the checks to read as user data.
+
+        Facts has no field for most legal follow-ups (which 5(1)(h) objective, whether
+        the output shapes the decision), so a check that saw only the description kept
+        asking the same question: measured on live-face-recognition-police.
+        """
+        answers = state.get("answers")
+        if not answers:
+            return state["description"]
+        lines = "\n".join(f"- {question}: {answer}" for question, answer in answers.items())
+        return f"{state['description'].strip()}\n\nFollow-up answers:\n{lines}"
+
     def extract_facts_node(state: Assessment) -> dict:
         facts = extract_facts(llm, state["description"], state.get("answers"))
         questions = [
@@ -236,7 +249,7 @@ def build_graph(
         return {"facts": facts, "questions": questions}
 
     def check_prohibited_node(state: Assessment) -> dict:
-        result = check_prohibited(llm, fetch, state["description"], state["facts"], state["lang"])
+        result = check_prohibited(llm, fetch, described(state), state["facts"], state["lang"])
         questions = [
             Question(id=f"art5_{label}", text=text)
             for label, text in zip(result.uncertain, result.questions, strict=True)
@@ -244,7 +257,7 @@ def build_graph(
         return {"prohibited": result, "questions": questions}
 
     def check_high_risk_node(state: Assessment) -> dict:
-        result = check_high_risk(llm, fetch, state["description"], state["facts"], state["lang"])
+        result = check_high_risk(llm, fetch, described(state), state["facts"], state["lang"])
         questions = [
             Question(id=f"art6_{name}", text=text)
             for name, text in zip(result.uncertain, result.questions, strict=True)
@@ -252,7 +265,7 @@ def build_graph(
         return {"high_risk": result, "questions": questions}
 
     def check_transparency_node(state: Assessment) -> dict:
-        result = check_transparency(llm, fetch, state["description"], state["facts"], state["lang"])
+        result = check_transparency(llm, fetch, described(state), state["facts"], state["lang"])
         questions = [
             Question(id=f"art50_{name}", text=text)
             for name, text in zip(result.uncertain, result.questions, strict=True)

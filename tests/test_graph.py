@@ -207,10 +207,15 @@ def test_an_uncertain_practice_is_asked_then_everything_is_checked_again():
     ]
     assert steps(llm) == ["Facts", "ProhibitedCheck"] * 2
     assert done["report"]["risk"] == "prohibited" and done["report"]["uncertain"] == []
+    checks = [user for name, user in llm.prompts if name == "ProhibitedCheck"]
+    assert "No, it is for grading" not in checks[0]
+    assert "- Is it for medical reasons?: No, it is for grading" in checks[1]  # the check sees it
 
 
 def test_an_open_profiling_question_is_asked_and_counts_as_high_risk_meanwhile():
-    narrow = ExceptionFinding(applies="yes", condition="a", reason="Narrow task.")
+    narrow = ExceptionFinding(
+        applies="yes", condition="a", influences_decision="no", reason="Narrow task."
+    )
     excepted = HIGH.model_copy(update={"exception": narrow})
     rounds = MAX_ROUNDS + 1
     llm = ScriptedLLM(
