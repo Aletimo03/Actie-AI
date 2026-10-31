@@ -53,6 +53,8 @@ PROMPT_SHARE = 0.75  # of the window; the rest is for the reply and tokenizer di
 # Free tiers limit tokens per minute (Groq: 8000), and LiteLLM's own retries come back
 # before the window frees up. On a 429 we wait as long as the provider asks, up to this.
 RATE_LIMIT_BUDGET = 180  # seconds of waiting per call before giving up
+# A daily cap that gives no wait (Cloudflare: "you have used up your daily free allocation").
+DAILY_CAP = re.compile(r"\bdaily\b|per day|\(TPD\)|\(RPD\)", re.IGNORECASE)
 RETRY_IN = re.compile(r"try again in (?=\d)(?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?")
 # Free tiers also cap tokens per day (Groq: 200k), mostly spent re-running the same evals.
 LLM_CACHE_DIR = os.environ.get("LLM_CACHE_DIR") or None
@@ -99,10 +101,16 @@ def with_schema(system: str, schema: type[BaseModel]) -> str:
 
 
 def retry_after(error: Exception) -> float:
-    """Seconds the provider asked us to wait ("try again in 1h2m3.5s"), plus a margin."""
+    """Seconds the provider asked us to wait ("try again in 1h2m3.5s"), plus a margin.
+
+    Without a hint, a daily cap waits forever (so the caller moves on at once)
+    and anything else 10 s. Measured: Cloudflare's daily cap has no hint, and
+    treating it as a 10 s limit spent 3 minutes per call before failing.
+    """
     match = RETRY_IN.search(str(error))
     if not match or not any(match.groups()):
-        return 10.0
+        # No hint: a per-minute limit clears soon, a daily cap not before tomorrow.
+        return float("inf") if DAILY_CAP.search(str(error)) else 10.0
     hours, minutes, seconds = match.groups()
     return int(hours or 0) * 3600 + int(minutes or 0) * 60 + float(seconds or 0) + 0.5
 

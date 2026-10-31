@@ -149,6 +149,8 @@ def test_retry_after_reads_the_providers_wait():
     assert retry_after(limited("3h2m")) == 3 * 3600 + 120.5  # a daily cap, not 10 s
     assert retry_after(limited("1m2.5s")) == 63.0
     assert retry_after(RuntimeError("no hint")) == 10.0
+    cloudflare = "AiError: you have used up your daily free allocation of 10,000 neurons"
+    assert retry_after(RuntimeError(cloudflare)) == float("inf")
 
 
 def test_rate_limits_are_waited_out_then_retried():
@@ -191,6 +193,20 @@ def test_a_per_minute_limit_waits_on_the_same_model_instead_of_falling_back():
     llm.ask("s", "u", Facts)
     assert [call["model"] for call in fake.calls] == ["groq/m", "groq/m"] and waits == [7.5]
     assert llm.usage.fallback_calls == 0
+
+
+def test_a_daily_cap_without_a_wait_moves_on_at_once():
+    waits = []
+    used_up = litellm.RateLimitError(
+        "you have used up your daily free allocation", llm_provider="cloudflare", model="m"
+    )
+    fake = FakeCompletion(used_up, VALID)
+    llm = LLM(
+        model="cloudflare/m", fallbacks=["groq/m"], completion=fake, cache_dir=None,
+        sleep=waits.append,
+    )  # fmt: skip
+    llm.ask("s", "u", Facts)
+    assert [call["model"] for call in fake.calls] == ["cloudflare/m", "groq/m"] and waits == []
 
 
 def test_when_every_model_is_capped_the_rate_limit_is_raised():
