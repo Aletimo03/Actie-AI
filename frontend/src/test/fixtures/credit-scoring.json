@@ -19,7 +19,7 @@
       {
         "chunk_id": "en_art4_p1",
         "who": "deployer",
-        "text": "Make sure your staff who operate or use AI systems have sufficient AI literacy.",
+        "text": "Ensure that staff who operate or use AI systems have sufficient AI literacy.",
         "applies_from": "2025-02-02",
         "in_force": true,
         "condition": null,
@@ -28,7 +28,7 @@
       {
         "chunk_id": "en_art4_p1",
         "who": "provider",
-        "text": "Make sure your staff who operate or use AI systems have sufficient AI literacy.",
+        "text": "Ensure that staff who operate or use AI systems have sufficient AI literacy.",
         "applies_from": "2025-02-02",
         "in_force": true,
         "condition": null,
@@ -181,7 +181,7 @@
       {
         "chunk_id": "en_art26_p4",
         "who": "deployer",
-        "text": "Make sure the input data you control is relevant and representative.",
+        "text": "Ensure that input data under the deployer's control is relevant and representative.",
         "applies_from": "2027-12-02",
         "in_force": false,
         "condition": null,
@@ -199,7 +199,7 @@
       {
         "chunk_id": "en_art26_p6",
         "who": "deployer",
-        "text": "Keep the logs under your control for at least six months.",
+        "text": "Keep the logs under the deployer's control for at least six months.",
         "applies_from": "2027-12-02",
         "in_force": false,
         "condition": null,
@@ -208,7 +208,7 @@
       {
         "chunk_id": "en_art26_p11",
         "who": "deployer",
-        "text": "Tell the people it makes or assists decisions about that it is used on them.",
+        "text": "Inform the persons subject to decisions made or assisted by the system of its use.",
         "applies_from": "2027-12-02",
         "in_force": false,
         "condition": null,
@@ -220,7 +220,7 @@
         "text": "Inform workers' representatives and the affected workers before using it.",
         "applies_from": "2027-12-02",
         "in_force": false,
-        "condition": "if you use it at the workplace as an employer",
+        "condition": "where the system is used at the workplace by an employer",
         "verified": true
       },
       {
@@ -235,10 +235,10 @@
       {
         "chunk_id": "en_art49_p3",
         "who": "deployer",
-        "text": "Register your use of the system in the EU database before using it.",
+        "text": "Register the use of the system in the EU database before putting it into use.",
         "applies_from": "2027-12-02",
         "in_force": false,
-        "condition": "if you are a public authority or act on its behalf",
+        "condition": "where the deployer is a public authority or acts on its behalf",
         "verified": true
       }
     ],

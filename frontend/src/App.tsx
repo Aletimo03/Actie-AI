@@ -39,6 +39,10 @@ export function App() {
   const abort = useRef<AbortController | null>(null);
   const t = STRINGS[lang];
 
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
   const changeLang = (next: Lang) => {
     setLang(next);
     try {
@@ -130,7 +134,7 @@ export function App() {
             className="flex items-center gap-3 rounded-lg"
             onClick={(event) => (event.preventDefault(), newAssessment())}
           >
-            <img src="/actie-160.png" alt="" width={56} height={53} className="size-14 rounded-xl" />
+            <img src="/actie-160.png" alt="" width={56} height={56} className="size-14" />
             <span>
               <h1 className="text-3xl leading-none font-semibold">Actie AI</h1>
               <span className="text-sm text-gold">{t.title}</span>
@@ -143,7 +147,7 @@ export function App() {
         {view.kind === "describing" && (
           <DescribeForm lang={lang} onLang={changeLang} initial={description} error={view.error} onSubmit={start} />
         )}
-        {view.kind === "loading" && <p aria-busy>{t.loading}…</p>}
+        {view.kind === "loading" && <p aria-busy>{t.loading}</p>}
         {view.kind === "running" && <Progress steps={view.steps} lang={lang} />}
         {view.kind === "asking" && (
           <Questions

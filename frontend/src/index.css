@@ -6,18 +6,18 @@
 @import "@fontsource/lato/latin-400.css";
 @import "@fontsource/lato/latin-700.css";
 
-/* Theme tokens from the Actie icon: marble ivory, the icon's warm black as ink, brushed gold.
-   Contrast on ivory: ink 15.9:1, muted text 5.8:1, dark gold 5.8:1 (text and focus rings).
-   The bright gold is only used on ink (7.0:1). */
+/* Theme tokens from the Actie icon: its black (#0c0b0e) for the header and buttons, marble
+   ivory for surfaces, its gold for accents. Contrast on ivory: text 15.9:1, muted text 5.8:1,
+   dark gold 5.8:1 (text and focus rings). The bright gold is only used on black (9.8:1). */
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.75rem;
+  --radius: 0.5rem;
   --background: #faf6ee;
   --foreground: #1f1b16;
   --card: #fffdf8;
   --card-foreground: #1f1b16;
-  --primary: #1f1b16;
+  --primary: #0c0b0e;
   --primary-foreground: #faf6ee;
   --secondary: #f1e9da;
   --secondary-foreground: #1f1b16;
@@ -29,9 +29,9 @@
   --border: #e6dcc8;
   --input: #d9ccb2;
   --ring: #7f5a12;
-  --gold: #c9a04e;
+  --gold: #e8ad54;
   --gold-ink: #7f5a12;
-  --focus: var(--ring); /* 5.8:1 on ivory; the header sets the bright gold, 7.0:1 on ink */
+  --focus: var(--ring); /* 5.8:1 on ivory; the header sets the bright gold, 9.8:1 on black */
   color-scheme: light; /* no dark theme yet: keep form controls light too */
 }
 
@@ -60,16 +60,6 @@
   --color-gold-ink: var(--gold-ink);
   --font-serif: "EB Garamond", ui-serif, Georgia, serif;
   --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
 }
 
 @layer base {

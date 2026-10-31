@@ -26,10 +26,10 @@ export function ReportView({ report, lang, onNew }: Props) {
   const t = STRINGS[lang];
   const label = (id: string) => chunkLabel(id, lang);
   const reasons = [
-    ...report.banned.map((point) => `${t.bannedBy} ${`Art. 5(1)(${point})`}`),
-    ...report.high_risk_basis.map((id) => `${t.highRiskBy} ${label(id)}`),
+    ...report.banned.map((point) => `${t.bannedBy}: Art. 5(1)(${point})`),
+    ...report.high_risk_basis.map((id) => `${t.highRiskBy}: ${label(id)}`),
     ...(report.exception ? [`${t.exception}: ${report.exception}`] : []),
-    ...report.became_provider.map((point) => `${t.becameProvider} ${`Art. 25(1)(${point})`}`),
+    ...report.became_provider.map((point) => `${t.becameProvider}: Art. 25(1)(${point})`),
   ];
 
   // The Art. 50 duties are usually among the obligations already, with their dates.
@@ -44,7 +44,7 @@ export function ReportView({ report, lang, onNew }: Props) {
       <header className={cn("flex gap-4 rounded-xl border-2 p-5", style.box)}>
         <style.Icon aria-hidden className="mt-1 size-8 shrink-0" />
         <div className="space-y-1">
-          <h2 ref={heading} tabIndex={-1} className="text-3xl font-semibold outline-none">
+          <h2 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none sm:text-3xl">
             {t.risk[report.risk]}
           </h2>
           <p>{t.riskMeaning[report.risk]}</p>
