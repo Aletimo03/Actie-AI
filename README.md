@@ -104,6 +104,24 @@ uv run --env-file .env python -m evals.retrieval
 The re-ranker downloads about 2.3 GB on first use and takes about 3 s per
 question on an M-series GPU.
 
+## Agent eval
+
+52 labelled systems ([`evals/systems.toml`](evals/systems.toml)) run through the whole
+agent; the gate is **zero under-classifications** (a system reported at a lower risk
+than its label), and the script exits 1 otherwise.
+
+```bash
+uv run --env-file .env python -m evals.systems --quick   # ~15 systems
+uv run --env-file .env python -m evals.systems           # all 52
+```
+
+On Claude Haiku 5.5 a run costs about $0.08 (quick) or $0.27 (full) without the reply
+cache, so CI never runs it by itself: start it from **Actions → Eval → Run workflow**,
+with `ANTHROPIC_API_KEY` stored as a secret of the `eval` environment. It needs no ingestion:
+[`evals/law_snapshot.jsonl.gz`](evals/law_snapshot.jsonl.gz) holds the law the agent
+reads (0.9 MB, no embeddings); `python -m evals.law_snapshot export` refreshes it after
+loading a new version of the law, and a test fails until you do.
+
 ## Project layout
 
 ```
