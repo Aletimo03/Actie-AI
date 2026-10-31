@@ -41,7 +41,7 @@ def test_a_deployer_sees_conditions_it_must_check_itself():
     result = decide_obligations("deployer", CV, [], "en", TODAY)
     conditions = {o.chunk_id: o.condition for o in result.obligations if o.condition}
     assert set(conditions) == {"en_art26_p7", "en_art27_p1", "en_art49_p3"}
-    assert conditions["en_art26_p7"].startswith("if you use it at the workplace")
+    assert conditions["en_art26_p7"].startswith("where the system is used at the workplace")
     assert "en_art9_p1" not in ids(result)
 
 

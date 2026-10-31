@@ -42,7 +42,7 @@ AI_LITERACY = Rule(
     "art4_p1",
     "provider",  # and deployer: see decide_obligations
     {
-        "en": "Make sure your staff who operate or use AI systems have sufficient AI literacy.",
+        "en": "Ensure that staff who operate or use AI systems have sufficient AI literacy.",
         "it": "Garantire che il personale che gestisce o usa sistemi di IA abbia un livello "
         "sufficiente di alfabetizzazione in materia di IA.",
     },
@@ -115,8 +115,8 @@ HIGH_RISK = [
         "it": "Affidare la sorveglianza umana a persone competenti, formate e con autorità.",
     }),
     Rule("art26_p4", "deployer", {
-        "en": "Make sure the input data you control is relevant and representative.",
-        "it": "Garantire che i dati di input sotto il vostro controllo siano pertinenti e "
+        "en": "Ensure that input data under the deployer's control is relevant and representative.",
+        "it": "Garantire che i dati di input sotto il controllo del deployer siano pertinenti e "
         "rappresentativi.",
     }),
     Rule("art26_p5", "deployer", {
@@ -124,11 +124,11 @@ HIGH_RISK = [
         "it": "Monitorarne il funzionamento e informare il fornitore di rischi e incidenti gravi.",
     }),
     Rule("art26_p6", "deployer", {
-        "en": "Keep the logs under your control for at least six months.",
-        "it": "Conservare i log sotto il vostro controllo per almeno sei mesi.",
+        "en": "Keep the logs under the deployer's control for at least six months.",
+        "it": "Conservare i log sotto il controllo del deployer per almeno sei mesi.",
     }),
     Rule("art26_p11", "deployer", {
-        "en": "Tell the people it makes or assists decisions about that it is used on them.",
+        "en": "Inform the persons subject to decisions made or assisted by the system of its use.",
         "it": "Informare le persone interessate dalle decisioni che il sistema è usato nei "
         "loro confronti.",
     }, "annex_iii"),
@@ -142,23 +142,23 @@ HIGH_RISK = [
         "it": "Effettuare una valutazione d'impatto sui diritti fondamentali prima del primo uso.",
     }, "fria"),
     Rule("art49_p3", "deployer", {
-        "en": "Register your use of the system in the EU database before using it.",
-        "it": "Registrare l'uso del sistema nella banca dati dell'UE prima di usarlo.",
+        "en": "Register the use of the system in the EU database before putting it into use.",
+        "it": "Registrare l'uso del sistema nella banca dati dell'UE prima della messa in uso.",
     }, "public_body"),
 ]  # fmt: skip
 
 CONDITIONS = {
     "employer": {
-        "en": "if you use it at the workplace as an employer",
-        "it": "se lo usate sul luogo di lavoro come datore di lavoro",
+        "en": "where the system is used at the workplace by an employer",
+        "it": "se il sistema è utilizzato sul luogo di lavoro da un datore di lavoro",
     },
     "public_body": {
-        "en": "if you are a public authority or act on its behalf",
-        "it": "se siete un'autorità pubblica o agite per suo conto",
+        "en": "where the deployer is a public authority or acts on its behalf",
+        "it": "se il deployer è un'autorità pubblica o agisce per suo conto",
     },
     "fria": {
-        "en": "if you are a public body or a private entity providing public services",
-        "it": "se siete un ente pubblico o un ente privato che fornisce servizi pubblici",
+        "en": "where the deployer is a public body or a private entity providing public services",
+        "it": "se il deployer è un ente pubblico o un ente privato che fornisce servizi pubblici",
     },
 }
 
@@ -239,9 +239,9 @@ NOTES = {
         "(art. 111, paragrafo 2).",
     },
     "existing_generator": {
-        "en": "If your generator was on the market before 2 August 2026, the marking duty "
+        "en": "For generators placed on the market before 2 August 2026, the marking duty "
         "of Art. 50(2) applies from 2 December 2026 (Art. 111(4)).",
-        "it": "Se il vostro generatore era sul mercato prima del 2 agosto 2026, l'obbligo di "
+        "it": "Per i generatori immessi sul mercato prima del 2 agosto 2026, l'obbligo di "
         "marcatura dell'art. 50, paragrafo 2, si applica dal 2 dicembre 2026 "
         "(art. 111, paragrafo 4).",
     },

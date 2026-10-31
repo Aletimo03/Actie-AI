@@ -56,23 +56,32 @@ UNAVAILABLE = (
 RETRY_AFTER = "60"  # seconds; a daily cap lasts longer, but the client cannot tell which
 # What the user sees while each node runs; ask_user is the pause itself, not a step.
 STEPS = {
-    "extract_facts": {"en": "Reading the description", "it": "Lettura della descrizione"},
+    "extract_facts": {"en": "Analysis of the description", "it": "Analisi della descrizione"},
     "check_prohibited": {
         "en": "Prohibited practices (Art. 5)",
         "it": "Pratiche vietate (art. 5)",
     },
     "check_high_risk": {
-        "en": "High-risk uses (Art. 6, Annexes I and III)",
-        "it": "Usi ad alto rischio (art. 6, allegati I e III)",
+        "en": "High-risk classification (Art. 6, Annexes I and III)",
+        "it": "Classificazione ad alto rischio (art. 6, allegati I e III)",
     },
-    "check_transparency": {"en": "Transparency (Art. 50)", "it": "Trasparenza (art. 50)"},
-    "determine_role": {"en": "Your role (Art. 25)", "it": "Il tuo ruolo (art. 25)"},
-    "list_obligations": {"en": "Obligations and dates", "it": "Obblighi e date"},
+    "check_transparency": {
+        "en": "Transparency obligations (Art. 50)",
+        "it": "Obblighi di trasparenza (art. 50)",
+    },
+    "determine_role": {
+        "en": "Role of the organisation (Art. 25)",
+        "it": "Ruolo dell'organizzazione (art. 25)",
+    },
+    "list_obligations": {
+        "en": "Obligations and application dates",
+        "it": "Obblighi e date di applicazione",
+    },
     "verify_citations": {
-        "en": "Checking every citation against the law",
+        "en": "Verification of citations against the legal text",
         "it": "Verifica delle citazioni sul testo di legge",
     },
-    "report": {"en": "Report", "it": "Rapporto"},
+    "report": {"en": "Final assessment", "it": "Valutazione finale"},
 }
 
 

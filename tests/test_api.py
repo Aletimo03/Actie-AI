@@ -173,7 +173,7 @@ def test_streaming_sends_each_step_then_the_same_result_as_the_json_endpoint(cli
     assert paused.headers["x-accel-buffering"] == "no"  # or nginx holds every event back
     sent = events(paused)
     (_, start), *steps, (last, result) = sent
-    assert [d["label"] for _, d in steps] == ["Lettura della descrizione"]
+    assert [d["label"] for _, d in steps] == ["Analisi della descrizione"]
     assert last == "result" and result["status"] == "needs_answers"
     assert client.get(f"/assessments/{start['id']}").json() == result
 
