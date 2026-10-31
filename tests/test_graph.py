@@ -34,14 +34,15 @@ KNOWN = Facts(
 )
 UNKNOWN = Facts(summary="Something")
 NO = {"applies": "no", "reason": "Does not match."}
+NO_SCORE = NO | {"unrelated_context": "no", "disproportionate": "no"}  # Art. 5(1)(c)
 NO_EXCEPTION = NO | {"influences_decision": "uncertain"}  # Art. 6(3)
-CLEAR = ProhibitedCheck(**dict.fromkeys(PRACTICES, NO))
+PRACTICES_NO = dict.fromkeys(PRACTICES, NO) | {"c": NO_SCORE}
+CLEAR = ProhibitedCheck(**PRACTICES_NO)
 BANNED = ProhibitedCheck(
-    **dict.fromkeys(PRACTICES, NO)
-    | {"f": {"applies": "yes", "reason": "Emotions.", "quote": "the words"}}
+    **PRACTICES_NO | {"f": {"applies": "yes", "reason": "Emotions.", "quote": "the words"}}
 )
 UNSURE = ProhibitedCheck(
-    **dict.fromkeys(PRACTICES, NO)
+    **PRACTICES_NO
     | {"f": {"applies": "uncertain", "reason": "?", "question": "Is it for medical reasons?"}}
 )
 LOW = HighRiskCheck(annex_i=NO, annex_iii=NO, exception=NO_EXCEPTION)

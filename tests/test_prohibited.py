@@ -14,11 +14,12 @@ from backend.app.retrieval.contexts import Context, fetch_contexts
 from ingestion.load import load
 
 NO = {"applies": "no", "reason": "Does not match."}
+NO_SCORE = NO | {"unrelated_context": "no", "disproportionate": "no"}
 
 
 def check(**findings) -> ProhibitedCheck:
     """All practices "no" except the ones given."""
-    return ProhibitedCheck(**{label: NO for label in PRACTICES} | findings)
+    return ProhibitedCheck(**{label: NO for label in PRACTICES} | {"c": NO_SCORE} | findings)
 
 
 class FakeLLM:
@@ -53,6 +54,30 @@ def test_a_yes_finding_bans_and_cites_the_point():
     assert result.is_prohibited and result.banned == ["f"]
     citation = result.citations[0]
     assert (citation.chunk_id, citation.quote) == ("it_art5_p1_f", "infer emotions")
+
+
+@pytest.mark.parametrize(
+    ("unrelated", "disproportionate", "expected"),
+    [
+        ("yes", "no", "yes"),  # either consequence is enough: "either or both"
+        ("no", "yes", "yes"),
+        ("no", "no", "no"),  # a score with neither consequence is not banned
+        ("uncertain", "no", "uncertain"),
+    ],
+)
+def test_social_scoring_needs_one_of_its_consequences(unrelated, disproportionate, expected):
+    score = {
+        "applies": "yes",
+        "reason": "Scores people.",
+        "quote": "social score",
+        "unrelated_context": unrelated,
+        "disproportionate": disproportionate,
+    }
+    result = decide(check(c=score), "en")
+    assert ("c" in result.banned, "c" in result.uncertain) == (
+        expected == "yes",
+        expected == "uncertain",
+    )
 
 
 def test_uncertain_findings_become_questions():
