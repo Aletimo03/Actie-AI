@@ -322,7 +322,7 @@ quick = true
 description = "We built a tool that only converts unstructured CVs into a structured format (name, education, past jobs) for our HR database. It does not rank, score or assess anyone."
 lang = "en"
 risk = "minimal"
-answers = { affected_people = "Job applicants whose CVs are stored.", art6_profiling = "No, it only copies data into fields; it does not evaluate anyone.", art6_influence = "No: recruiters read the CVs and decide on their own; the tool only fills database fields." }
+answers = { affected_people = "Job applicants whose CVs are stored.", art6_annex_iii = "It is used in recruitment, but only to copy CV data into database fields; it does not select, filter or evaluate candidates.", art6_profiling = "No, it only copies data into fields; it does not evaluate anyone.", art6_influence = "No: recruiters read the CVs and decide on their own; the tool only fills database fields." }
 why = "Art. 6(3)(a): narrow procedural task, no profiling"
 
 [[system]]
