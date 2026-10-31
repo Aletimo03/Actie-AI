@@ -1,0 +1,274 @@
+{
+  "id": "a07a5618-b545-4c20-9337-653d65d1a1b6",
+  "status": "done",
+  "questions": [],
+  "report": {
+    "risk": "high",
+    "role": "provider_and_deployer",
+    "became_provider": [],
+    "banned": [],
+    "high_risk_basis": [
+      "en_annex3_5_b"
+    ],
+    "exception": null,
+    "transparency_duties": [],
+    "other_role_duties": [],
+    "uncertain": [],
+    "assumed_unknown": [],
+    "obligations": [
+      {
+        "chunk_id": "en_art4_p1",
+        "who": "deployer",
+        "text": "Make sure your staff who operate or use AI systems have sufficient AI literacy.",
+        "applies_from": "2025-02-02",
+        "in_force": true,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art4_p1",
+        "who": "provider",
+        "text": "Make sure your staff who operate or use AI systems have sufficient AI literacy.",
+        "applies_from": "2025-02-02",
+        "in_force": true,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art9_p1",
+        "who": "provider",
+        "text": "Set up and maintain a risk management system for the whole lifecycle.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art10_p1",
+        "who": "provider",
+        "text": "Train, validate and test on data sets that meet the quality criteria.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art11_p1",
+        "who": "provider",
+        "text": "Draw up the technical documentation before placing it on the market.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art12_p1",
+        "who": "provider",
+        "text": "Make the system record events (logs) automatically over its lifetime.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art13_p1",
+        "who": "provider",
+        "text": "Make it transparent enough for deployers, with instructions for use.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art14_p1",
+        "who": "provider",
+        "text": "Design it so that people can oversee it effectively while it is in use.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art15_p1",
+        "who": "provider",
+        "text": "Achieve appropriate accuracy, robustness and cybersecurity.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art17_p1",
+        "who": "provider",
+        "text": "Put a documented quality management system in place.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art43_p1",
+        "who": "provider",
+        "text": "Complete the conformity assessment before placing it on the market.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art47_p1",
+        "who": "provider",
+        "text": "Draw up the EU declaration of conformity and keep it for 10 years.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art48_p1",
+        "who": "provider",
+        "text": "Affix the CE marking.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art49_p1",
+        "who": "provider",
+        "text": "Register the system in the EU database before placing it on the market.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art72_p1",
+        "who": "provider",
+        "text": "Set up and document post-market monitoring.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art73_p1",
+        "who": "provider",
+        "text": "Report serious incidents to the market surveillance authorities.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p1",
+        "who": "deployer",
+        "text": "Use the system according to the provider's instructions for use.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p2",
+        "who": "deployer",
+        "text": "Assign human oversight to competent, trained people with authority.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p4",
+        "who": "deployer",
+        "text": "Make sure the input data you control is relevant and representative.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p5",
+        "who": "deployer",
+        "text": "Monitor its operation and inform the provider of risks and serious incidents.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p6",
+        "who": "deployer",
+        "text": "Keep the logs under your control for at least six months.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p11",
+        "who": "deployer",
+        "text": "Tell the people it makes or assists decisions about that it is used on them.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art26_p7",
+        "who": "deployer",
+        "text": "Inform workers' representatives and the affected workers before using it.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": "if you use it at the workplace as an employer",
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art27_p1",
+        "who": "deployer",
+        "text": "Carry out a fundamental rights impact assessment before first use.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": null,
+        "verified": true
+      },
+      {
+        "chunk_id": "en_art49_p3",
+        "who": "deployer",
+        "text": "Register your use of the system in the EU database before using it.",
+        "applies_from": "2027-12-02",
+        "in_force": false,
+        "condition": "if you are a public authority or act on its behalf",
+        "verified": true
+      }
+    ],
+    "notes": [
+      "Art. 113 dates Arts. 43, 47-49 and 72-73 from 2 August 2026, but they apply to systems that are high-risk under Chapter III, so they are shown with its date.",
+      "A high-risk system already on the market before that date is covered only if its design changes significantly afterwards; systems used by public authorities must comply by 2 August 2030 in any case (Art. 111(2))."
+    ],
+    "citations": [
+      {
+        "chunk_id": "en_annex3_5_b",
+        "quote": "AI systems intended to be used to evaluate the creditworthiness of natural persons or establish their credit score",
+        "claim": "The system is intended to evaluate the creditworthiness of consumers to decide on personal loan applications. This matches point 5(b). The fraud-detection exception does not apply, since the purpose is credit assessment.",
+        "verified": true,
+        "note": ""
+      },
+      {
+        "chunk_id": "en_art113_a",
+        "quote": "Chapters I and II shall apply from 2 February 2025",
+        "claim": "AI literacy (Art. 4) applies from 2 February 2025.",
+        "verified": true,
+        "note": ""
+      },
+      {
+        "chunk_id": "en_art113_c_i",
+        "quote": "2 December 2027 as regards AI systems classified as high-risk pursuant to Article 6(2) and Annex III",
+        "claim": "The high-risk duties apply from 2 December 2027 for Annex III systems.",
+        "verified": true,
+        "note": ""
+      }
+    ],
+    "unverified": []
+  }
+}
