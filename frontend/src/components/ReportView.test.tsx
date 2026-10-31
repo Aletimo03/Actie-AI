@@ -68,7 +68,8 @@ describe("ReportView", () => {
     show({ ...real, risk: "prohibited", banned: ["h"], uncertain: ["h", "annex_iii"], assumed_unknown: ["role"] }, "it");
     expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent("Pratica di IA vietata");
     expect(screen.getByText("Pratica vietata: Art. 5(1)(h)")).toBeInTheDocument();
-    expect(screen.getByText(/Art\. 5\(1\)\(h\), Allegato III/)).toBeInTheDocument();
+    expect(screen.getByText("Art. 5(1)(h)", { selector: "li" })).toBeInTheDocument();
+    expect(screen.getByText("Allegato III", { selector: "li" })).toBeInTheDocument();
     expect(screen.getByText(/se l'organizzazione sviluppa o utilizza il sistema/)).toBeInTheDocument();
   });
 });

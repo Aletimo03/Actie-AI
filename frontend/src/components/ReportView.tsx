@@ -67,14 +67,10 @@ export function ReportView({ report, lang, onNew }: Props) {
           <AlertTitle>{t.uncertainTitle}</AlertTitle>
           <AlertDescription>
             {report.uncertain.length > 0 && (
-              <p>
-                {t.uncertainText} {unique(report.uncertain.map((n) => uncertainLabel(n, lang))).join(", ")}
-              </p>
+              <Bullets intro={t.uncertainText} items={unique(report.uncertain.map((n) => uncertainLabel(n, lang)))} />
             )}
             {report.assumed_unknown.length > 0 && (
-              <p>
-                {t.assumedText} {report.assumed_unknown.map((f) => t.facts[f] ?? f).join(", ")}.
-              </p>
+              <Bullets intro={t.assumedText} items={report.assumed_unknown.map((f) => t.facts[f] ?? f)} />
             )}
           </AlertDescription>
         </Alert>
@@ -84,7 +80,7 @@ export function ReportView({ report, lang, onNew }: Props) {
         <Alert variant="destructive">
           <AlertTitle>{t.unverifiedTitle}</AlertTitle>
           <AlertDescription>
-            {t.unverifiedText} {unique(report.unverified.map(label)).join(", ")}
+            <Bullets intro={t.unverifiedText} items={unique(report.unverified.map(label))} />
           </AlertDescription>
         </Alert>
       )}
@@ -177,20 +173,14 @@ function Timeline({ obligations, lang }: { obligations: Obligation[]; lang: Lang
         return (
           <li key={date}>
             <h4 className="mb-2 font-medium">{heading(formatDate(date, lang))}</h4>
-            <ul className="space-y-2">
+            <ul className="list-disc space-y-3 pl-5 marker:text-gold-ink">
               {group.map((o, index) => (
-                <li key={index} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-                  <span className="flex-1 basis-64">
+                <li key={index}>
+                  <p>
                     {o.text}
                     {o.condition && <span className="text-muted-foreground"> ({o.condition})</span>}
-                  </span>
-                  {o.roles.map((who) => (
-                    <Badge key={who} variant="secondary">
-                      {t.who[who]}
-                    </Badge>
-                  ))}
-                  <span className="text-muted-foreground tabular-nums">{chunkLabel(o.chunk_id, lang)}</span>
-                  {!o.verified && <Unverified text={t.notFound} />}
+                  </p>
+                  <Details roles={o.roles} chunkId={o.chunk_id} lang={lang} verified={o.verified} />
                 </li>
               ))}
             </ul>
@@ -202,17 +192,31 @@ function Timeline({ obligations, lang }: { obligations: Obligation[]; lang: Lang
 }
 
 function Duties({ duties, lang }: { duties: Report["transparency_duties"]; lang: Lang }) {
-  const t = STRINGS[lang];
   return (
-    <ul className="space-y-2 text-sm">
+    <ul className="list-disc space-y-3 pl-5 marker:text-gold-ink">
       {duties.map((duty, index) => (
-        <li key={index} className="flex flex-wrap items-baseline gap-2">
-          <span className="flex-1 basis-64">{duty.text}</span>
-          <Badge variant="secondary">{t.who[duty.who]}</Badge>
-          <span className="text-muted-foreground">{chunkLabel(duty.chunk_id, lang)}</span>
+        <li key={index}>
+          <p>{duty.text}</p>
+          <Details roles={[duty.who]} chunkId={duty.chunk_id} lang={lang} />
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Whose duty it is and where the law says so, under the duty itself. */
+function Details(props: { roles: Obligation["who"][]; chunkId: string; lang: Lang; verified?: boolean }) {
+  const t = STRINGS[props.lang];
+  return (
+    <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      {props.roles.map((who) => (
+        <Badge key={who} variant="secondary">
+          {t.who[who]}
+        </Badge>
+      ))}
+      <span className="tabular-nums">{chunkLabel(props.chunkId, props.lang)}</span>
+      {props.verified === false && <Unverified text={t.notFound} />}
+    </p>
   );
 }
 
@@ -262,6 +266,19 @@ function ShareLink({ lang }: { lang: Lang }) {
       </Button>
       <span>{t.linkWarning}</span>
     </p>
+  );
+}
+
+function Bullets({ intro, items }: { intro: string; items: string[] }) {
+  return (
+    <div>
+      <p>{intro}</p>
+      <ul className="mt-1 list-disc pl-5">
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
