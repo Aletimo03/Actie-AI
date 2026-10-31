@@ -1,0 +1,30 @@
+# The build context is sent to Docker in full: keep out secrets, environments,
+# data and anything an image never needs. Each Dockerfile copies what it uses.
+
+# Secrets: settings come in at run time (env_file, Kubernetes Secrets), never in a layer
+.env
+.env.*
+!.env.example
+
+# Environments and caches, rebuilt inside the image
+.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.cache/
+frontend/node_modules/
+frontend/dist/
+
+# Data: the law lives in Postgres, raw downloads are re-fetched by ingestion
+data/
+
+# Not part of any image
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
+.DS_Store
+tests/
+evals/
