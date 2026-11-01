@@ -49,7 +49,8 @@ def export(conn: psycopg.Connection, path: Path = SNAPSHOT) -> dict[str, int]:
         counts[table] = len(rows)
         lines += [json.dumps({"table": table, **dict(zip(columns, row, strict=True))},
                              ensure_ascii=False) for row in rows]  # fmt: skip
-    # mtime=0 and sorted rows: the same law gives the same bytes, so git sees no change.
+    # mtime=0 and sorted rows: the same law gives the same content, so an export on the same
+    # machine leaves git with no change (other zlib builds may compress it differently).
     path.write_bytes(gzip.compress("\n".join(lines).encode() + b"\n", mtime=0))
     return counts
 

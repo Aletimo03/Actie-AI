@@ -41,7 +41,9 @@ def test_export_then_load_gives_the_same_rows(db, tmp_path):
     load(db)
     copy = tmp_path / "again.jsonl.gz"
     export(db, copy)
-    assert copy.read_bytes() == SNAPSHOT.read_bytes()  # deterministic: no spurious git diffs
+    # The same rows in the same order. Compared decompressed: gzip's bytes depend on the
+    # zlib build (CI's Linux Python compresses the same text differently than macOS).
+    assert gzip.decompress(copy.read_bytes()) == gzip.decompress(SNAPSHOT.read_bytes())
 
 
 def test_the_snapshot_is_the_law_in_the_local_database():
