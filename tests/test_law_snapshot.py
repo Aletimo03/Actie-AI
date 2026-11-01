@@ -55,6 +55,9 @@ def test_the_snapshot_is_the_law_in_the_local_database():
     except psycopg.OperationalError:
         pytest.skip("database not running (docker compose up -d)")
     with conn:
+        # CI's database is empty: no schema at all, so ask whether the table exists first.
+        if conn.execute("SELECT to_regclass('versions')").fetchone()[0] is None:
+            pytest.skip("no law loaded in this database (CI)")
         current = conn.execute("SELECT version FROM versions WHERE is_current").fetchone()
     if current is None:
         pytest.skip("no law loaded in this database (CI)")
