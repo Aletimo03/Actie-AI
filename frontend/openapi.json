@@ -290,6 +290,27 @@
         }
       }
     },
+    "/livez": {
+      "get": {
+        "summary": "Live",
+        "description": "Liveness: the process answers. Unlike /health it never touches the database, so an\norchestrator that restarts failing pods doesn't restart them all when Postgres blinks.",
+        "operationId": "live_livez_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Live Livez Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "summary": "Health",
