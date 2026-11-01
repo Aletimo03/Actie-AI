@@ -160,14 +160,25 @@ class AssessmentOut(BaseModel):
     report: Report | None = None
 
 
+def open_pools(url: str) -> tuple[ConnectionPool, ConnectionPool]:
+    """Two pools: the checkpointer needs autocommit and dict rows, the law queries read tuples.
+
+    Every connection is checked before it is handed out: after Postgres restarts (a reboot,
+    an upgrade, a failover) the pooled connections are dead, and without the check the first
+    requests would fail on them.
+    """
+    check = ConnectionPool.check_connection
+    checkpoints = ConnectionPool(
+        url, min_size=1, max_size=10, check=check,
+        kwargs={"autocommit": True, "row_factory": dict_row},
+    )  # fmt: skip
+    law = ConnectionPool(url, min_size=1, max_size=10, check=check)
+    return checkpoints, law
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    url = os.environ["DATABASE_URL"]
-    # Two pools: the checkpointer needs autocommit and dict rows, the law queries read tuples.
-    checkpoints = ConnectionPool(
-        url, min_size=1, max_size=10, kwargs={"autocommit": True, "row_factory": dict_row}
-    )
-    law = ConnectionPool(url, min_size=1, max_size=10)
+    checkpoints, law = open_pools(os.environ["DATABASE_URL"])
     with law.connection() as conn:
         conn.execute(quota.SCHEMA)
     checkpointer = PostgresSaver(checkpoints, serde=SERDE)

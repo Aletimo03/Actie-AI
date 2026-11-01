@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -11,7 +12,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from test_graph import BANNED, CLEAR, HIGH, KNOWN, NONE, TODAY, UNKNOWN, ScriptedLLM, fetch, lookup
 
 from backend.app.agent.graph import SERDE, build_graph
-from backend.app.api import app, check_quota, get_graph, get_pool
+from backend.app.api import app, check_quota, get_graph, get_pool, open_pools
 from backend.app.llm import SchemaError
 
 DESCRIPTION = "We built a tool that ranks job applicants' CVs for recruiters."
@@ -288,3 +289,29 @@ def test_a_paused_assessment_survives_a_restart(client, checkpoint_db):
     assert client.get(f"/assessments/{id}").json()["status"] == "needs_answers"
     done = client.post(f"/assessments/{id}/answers", json={"answers": {"role": "We use it."}})
     assert done.json()["status"] == "done" and done.json()["report"]["risk"] == "high"
+
+
+def test_the_pools_survive_a_database_restart():
+    """Postgres restarting kills every pooled connection; the next request must still work."""
+    psycopg = pytest.importorskip("psycopg")
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        pytest.skip("needs DATABASE_URL (uv run --env-file .env pytest)")
+    try:
+        admin = psycopg.connect(url, autocommit=True)
+    except psycopg.OperationalError:
+        pytest.skip("database not running (docker compose up -d)")
+    checkpoints, law = open_pools(url)
+    try:
+        for pool in (checkpoints, law):
+            pool.wait(timeout=5)
+            with pool.connection() as conn:  # the connection a restart will kill
+                pid = conn.info.backend_pid
+            admin.execute("SELECT pg_terminate_backend(%s)", (pid,))
+            with pool.connection() as conn:  # checked, found dead, replaced
+                assert conn.execute("SELECT 1").fetchone()
+                assert conn.info.backend_pid != pid
+    finally:
+        checkpoints.close()
+        law.close()
+        admin.close()
