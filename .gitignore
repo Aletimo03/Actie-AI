@@ -13,6 +13,12 @@ build/
 node_modules/
 *.tsbuildinfo
 
+# Terraform: state and the provider cache stay local (the lock file is committed)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+
 # Secrets: never commit real settings
 .env
 .env.*

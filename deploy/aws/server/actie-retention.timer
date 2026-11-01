@@ -1,0 +1,9 @@
+[Unit]
+Description=Actie AI: retention, daily
+
+[Timer]
+OnCalendar=*-*-* 03:17:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

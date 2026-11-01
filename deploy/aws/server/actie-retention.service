@@ -1,0 +1,8 @@
+[Unit]
+Description=Actie AI: delete assessments untouched for 30 days
+After=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/actie
+ExecStart=/usr/bin/docker compose run --rm retention

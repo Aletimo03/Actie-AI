@@ -1,0 +1,9 @@
+# HTTPS for the app: Caddy gets and renews a Let's Encrypt certificate for SITE_ADDRESS
+# (your domain, or <ip-with-dashes>.sslip.io) and redirects HTTP to HTTPS.
+{$SITE_ADDRESS} {
+	reverse_proxy web:8080 {
+		# The progress stream (SSE): pass every event on at once.
+		flush_interval -1
+	}
+	header Strict-Transport-Security "max-age=31536000"
+}
