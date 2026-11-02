@@ -2,12 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { Assessment, Report } from "@/api/client";
 import fixture from "@/test/fixtures/credit-scoring.json";
-import { ReportView } from "./ReportView";
+import { ReportSummary, ReportView } from "./ReportView";
 
 const real = (fixture as Assessment).report!; // a real Haiku 5.5 report: bank credit scoring
 
 function show(report: Report, lang: "en" | "it" = "en") {
-  return render(<ReportView report={report} lang={lang} onNew={() => {}} />);
+  return render(<ReportView report={report} lang={lang} />);
 }
 
 describe("ReportView", () => {
@@ -18,20 +18,28 @@ describe("ReportView", () => {
     expect(screen.getByText("High-risk classification: Annex III, 5(b)")).toBeInTheDocument();
   });
 
-  it("groups the obligations by the date they apply from", () => {
+  it("lists the obligations in a table, by the date they apply from", () => {
     show(real);
-    const section = screen.getByRole("heading", { name: "Obligations" }).closest("[data-slot=card]")!;
-    const dates = within(section as HTMLElement).getAllByRole("heading", { level: 4 });
-    expect(dates.map((d) => d.textContent)).toEqual([
-      "Applicable since February 2, 2025",
-      "Applicable from December 2, 2027",
-    ]);
-    // AI literacy is a duty of both roles: one row with two badges, not two rows.
-    const literacy = within(section as HTMLElement).getAllByText(/sufficient AI literacy/);
+    const table = screen.getByRole("table");
+    const headers = within(table).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(headers).toEqual(["Applicable from", "Obligation", "Party", "Provision"]);
+    const rows = within(table).getAllByRole("row").slice(1);
+    const dates = rows.map((r) => within(r).getAllByRole("cell")[0]!.textContent);
+    expect(dates[0]).toBe("February 2, 2025already applicable");
+    expect(dates.at(-1)).toBe("December 2, 2027");
+    // AI literacy binds both roles: one row naming both parties, not two rows.
+    const literacy = rows.filter((r) => /sufficient AI literacy/.test(r.textContent ?? ""));
     expect(literacy).toHaveLength(1);
-    const row = within(literacy[0]!.closest("li")!);
-    expect(row.getByText("provider")).toBeInTheDocument();
-    expect(row.getByText("deployer")).toBeInTheDocument();
+    expect(within(literacy[0]!).getAllByRole("cell")[2]).toHaveTextContent("deployer, provider");
+  });
+
+  it("sums the result up beside it", () => {
+    render(<ReportSummary report={real} lang="en" onNew={() => {}} />);
+    const summary = screen.getByRole("region", { name: "Summary" });
+    expect(summary).toHaveTextContent("Risk categoryHigh-risk AI system");
+    expect(summary).toHaveTextContent("Roleprovider and deployer");
+    expect(summary).toHaveTextContent("Next application dateDecember 2, 2027");
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
   });
 
   it("lists a transparency duty once, under the obligations when it is there", () => {

@@ -32,7 +32,7 @@ export function Failure({ lang, message, retry, retryAfter, onRetry, onNew }: Pr
     <div className="space-y-4">
       <Alert variant="destructive" className="border-destructive/40 bg-red-50">
         <CircleAlert aria-hidden />
-        <AlertTitle ref={heading} tabIndex={-1} className="font-serif text-xl outline-none">
+        <AlertTitle ref={heading} tabIndex={-1} className="text-xl outline-none">
           {title}
         </AlertTitle>
         <AlertDescription className="text-base">

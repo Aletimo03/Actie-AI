@@ -1,10 +1,9 @@
 @import "tailwindcss";
-/* Self-hosted, Latin only (English and Italian): Google Fonts would send every visitor's IP address to Google. */
-@import "@fontsource/eb-garamond/latin-500.css";
-@import "@fontsource/eb-garamond/latin-600.css";
-@import "@fontsource/eb-garamond/latin-500-italic.css";
-@import "@fontsource/lato/latin-400.css";
-@import "@fontsource/lato/latin-700.css";
+/* Self-hosted (Google Fonts would send every visitor's IP address to Google). Hanken Grotesk
+   for everything; Source Serif 4 italic only for quotations from the regulation, so the law's
+   own words read differently from ours. */
+@import "@fontsource-variable/hanken-grotesk/wght.css";
+@import "@fontsource-variable/source-serif-4/opsz-italic.css";
 
 /* Theme tokens from the Actie icon: its black (#0c0b0e) for the header and buttons, marble
    ivory for surfaces, its gold for accents. Contrast on ivory: text 15.9:1, muted text 5.8:1,
@@ -12,7 +11,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --background: #faf6ee;
   --foreground: #1f1b16;
   --card: #fffdf8;
@@ -22,15 +21,17 @@
   --secondary: #f1e9da;
   --secondary-foreground: #1f1b16;
   --muted: #f1e9da;
-  --muted-foreground: #6a5f50;
+  --muted-foreground: #554a3d;
   --accent: #f1e9da;
   --accent-foreground: #1f1b16;
   --destructive: #b42318;
-  --border: #e6dcc8;
-  --input: #d9ccb2;
+  --border: #e2d7c1;
+  --input: #968669; /* 3.5:1 on the card: form-field outlines need 3:1 */
   --ring: #7f5a12;
   --gold: #e8ad54;
   --gold-ink: #7f5a12;
+  --muted-soft: #7a6d5c; /* steps not reached yet: 4.95:1 on the card */
+  --panel: #f6f0e4; /* the side panel: a softer surface than the paper */
   --focus: var(--ring); /* 5.8:1 on ivory; the header sets the bright gold, 9.8:1 on black */
   color-scheme: light; /* no dark theme yet: keep form controls light too */
 }
@@ -58,22 +59,33 @@
   --color-ring: var(--ring);
   --color-gold: var(--gold);
   --color-gold-ink: var(--gold-ink);
-  --font-serif: "EB Garamond", ui-serif, Georgia, serif;
-  --font-sans: "Lato", ui-sans-serif, system-ui, sans-serif;
+  --color-muted-soft: var(--muted-soft);
+  --color-panel: var(--panel);
+  --font-serif: "Source Serif 4 Variable", ui-serif, Georgia, serif;
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  /* The black behind the page shows when it is pulled past its edges, and no bounce at all
+     where the browser allows it. */
+  html {
+    background: var(--primary);
+    overscroll-behavior: none;
+  }
+  /* Read, not glanced at: 17 px body text, 1.6 line height. */
   body {
+    overflow-x: clip;
     @apply bg-background font-sans text-foreground antialiased;
+    font-size: 1.0625rem;
+    line-height: 1.6;
   }
   h1,
   h2,
-  h3,
-  h4 {
-    @apply font-serif;
+  h3 {
+    letter-spacing: -0.015em;
   }
   button:not(:disabled) {
     cursor: pointer;

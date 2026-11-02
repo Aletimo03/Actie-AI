@@ -105,8 +105,7 @@ it("shows where the user is, skips to the content and focuses the result", async
   vi.mocked(client.startAssessment).mockReturnValue(stream({ event: "result", data: done }));
   render(<App />);
   expect(screen.getByRole("link", { name: "Skip to main content" })).toHaveAttribute("href", "#main");
-  expect(screen.getByRole("navigation", { name: "Assessment steps" }).querySelector("[aria-current=step]"))
-    .toHaveTextContent("Description");
+  expect(screen.queryByRole("navigation", { name: "Assessment steps" })).not.toBeInTheDocument();
 
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Description of the AI system"), "A bank scores consumers' credit-worthiness.");
