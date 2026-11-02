@@ -29,6 +29,11 @@ describe("readEvents", () => {
     ]);
   });
 
+  it("skips events this UI doesn't know", async () => {
+    const unknown = 'event: usage\ndata: {"tokens": 10}\n\n';
+    expect((await all(readEvents(body(START + unknown + STEP)))).map((e) => e.event)).toEqual(["start", "step"]);
+  });
+
   it("joins an event the network split, even inside the JSON or the blank line", async () => {
     const whole = START + STEP;
     for (const at of [5, START.length - 1, START.length + 30]) {

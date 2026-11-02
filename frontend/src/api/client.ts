@@ -24,6 +24,7 @@ export type StreamEvent =
   | { event: "result"; data: Assessment }
   | { event: "error"; data: { message: string; retry_after: number } };
 
+const EVENTS = new Set(["start", "step", "result", "error"]);
 const BASE = "/api";
 
 export class ApiError extends Error {
@@ -75,7 +76,8 @@ export async function* readEvents(body: ReadableStream<Uint8Array>): AsyncGenera
         if (line.startsWith("event:")) name = line.slice(6).trim();
         else if (line.startsWith("data:")) data.push(line.slice(5).trimStart());
       }
-      if (data.length) yield { event: name, data: JSON.parse(data.join("\n")) } as StreamEvent;
+      // Events this UI doesn't know (a newer API) are skipped, not passed on half-typed.
+      if (data.length && EVENTS.has(name)) yield { event: name, data: JSON.parse(data.join("\n")) } as StreamEvent;
     }
   }
   // A block with no blank line after it was cut off: dropped, as the SSE spec says.
