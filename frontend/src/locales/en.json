@@ -1,0 +1,171 @@
+{
+  "title": "EU AI Act Assessment",
+  "headline": "Evaluate your AI system’s compliance with the EU AI Act",
+  "stepOf": "Step {n} of {total}",
+  "examplesLabel": "Use cases",
+  "examples": [
+    {
+      "label": "CV screening",
+      "text": "We develop and commercialize software that screens and ranks job applicants' CVs for recruiters. Recruiters use these scores to select candidates for interviews."
+    },
+    {
+      "label": "Customer support chatbot",
+      "text": "Our e-commerce platform features a custom-built AI chatbot that handles customer inquiries regarding order status and returns."
+    },
+    {
+      "label": "Credit scoring system",
+      "text": "Our financial institution developed a proprietary model to assess the creditworthiness of personal loan applicants to automate lending decisions."
+    }
+  ],
+  "durationHint": "Assessments typically take under a minute. Additional details may be required for complex systems.",
+  "aiNotice": "Actie AI leverages an AI model and may produce inaccuracies.",
+  "submittedTitle": "Submitted description",
+  "summaryTitle": "Summary",
+  "summaryRisk": "Risk tier",
+  "summaryRole": "Organizational role",
+  "summaryObligations": "Key obligations",
+  "summaryInForce": "Currently applicable",
+  "summaryNext": "Next compliance deadline",
+  "summaryVerified": "Verified references",
+  "print": "Print or save as PDF",
+  "colFrom": "Applicable from",
+  "colParty": "Responsible party",
+  "colProvision": "Legal provision",
+  "inForceTag": "currently applicable",
+  "scopeTitle": "Assessment scope",
+  "scope": [
+    "Identification of prohibited AI practices",
+    "High-risk system classification",
+    "Transparency requirements check",
+    "Determination of organizational role",
+    "Applicable obligations and compliance timelines",
+    "Verification of references against the legal text"
+  ],
+  "sourceTitle": "Legal references",
+  "consolidated": "Regulation (EU) 2024/1689, consolidated text as of {date}.",
+  "regulation": "Regulation (EU) 2024/1689 on EUR-Lex",
+  "privacyTitle": "Data privacy",
+  "privacyText": "Descriptions are processed using Anthropic language models (USA). Assessment data is automatically deleted 30 days after the last update.",
+  "languageLabel": "Language",
+  "answersTitle": "Submitted responses",
+  "skip": "Skip to main content",
+  "flowLabel": "Assessment steps",
+  "flow": [
+    "Description",
+    "Analysis",
+    "Clarifications",
+    "Results"
+  ],
+  "nextStep": "Processing next step...",
+  "elapsed": "{seconds} s elapsed. Standard assessments take 20–40 seconds.",
+  "connectionLost": "Connection lost. The assessment may have completed—click Retry to reload.",
+  "unreachable": "Service temporarily unavailable. Please check your network connection or try again shortly.",
+  "intro": "Describe your AI system in a few sentences, including its purpose, target users, and affected individuals. You will receive an automated compliance analysis covering risk classification, organizational role, applicable obligations, deadlines, and official legal references.",
+  "description": "AI system description",
+  "placeholder": "What is the intended purpose of the system, who uses it, and what decisions does it support?",
+  "tooShort": "Please enter at least 20 characters ({n} entered).",
+  "check": "Start assessment",
+  "working": "Analyzing AI system...",
+  "questionsTitle": "Additional information needed",
+  "questionsIntro": "The provided description leaves a few points unresolved. Leave fields blank if the information is unavailable.",
+  "continue": "Submit responses",
+  "risk": {
+    "prohibited": "Prohibited AI practice",
+    "high": "High-risk AI system",
+    "limited": "Limited risk",
+    "minimal": "Minimal risk"
+  },
+  "riskMeaning": {
+    "prohibited": "Prohibited practice: placing on the market, putting into service, or using this system in the EU is unlawful (Article 5).",
+    "high": "Permitted subject to strict compliance with Chapter III requirements and obligations.",
+    "limited": "Permitted. Transparency obligations under Article 50 apply.",
+    "minimal": "No specific statutory obligations, subject to general AI literacy standards (Article 4)."
+  },
+  "role": {
+    "provider": "Role: Provider",
+    "deployer": "Role: Deployer",
+    "provider_and_deployer": "Role: Provider & Deployer",
+    "unknown": "Role: Undetermined based on provided description"
+  },
+  "bannedBy": "Prohibited practice under {provision}",
+  "highRiskBy": "High-risk classification under {provision}",
+  "exception": "Article 6(3) exception",
+  "becameProvider": "Subject to provider obligations (Article 25)",
+  "uncertainTitle": "Open points & assumptions",
+  "uncertainText": "The following details could not be definitively determined. The assessment applies a conservative interpretation:",
+  "assumedText": "Unspecified in description:",
+  "obligations": "Obligations",
+  "who": {
+    "provider": "provider",
+    "deployer": "deployer"
+  },
+  "transparency": "Transparency obligations (Article 50)",
+  "otherRole": "Counterparty obligations (for reference)",
+  "notes": "Operational notes",
+  "citations": "Cited legal provisions",
+  "verified": "Reference verified against official text",
+  "notFound": "Reference not found in official text",
+  "unverifiedTitle": "Unverified references",
+  "unverifiedText": "Please verify the following against official statutory sources before relying on them:",
+  "lawAsOf": "Legal reference: Regulation (EU) 2024/1689, consolidated version as of {date}.",
+  "notAdvice": "Legal Disclaimer: This assessment is generated automatically for informational purposes and does not constitute formal legal advice.",
+  "copyLink": "Copy link",
+  "copied": "Link copied to clipboard",
+  "linkWarning": "Notice: Anyone with this link can view the assessment results.",
+  "newAssessment": "Start new assessment",
+  "confirmTitle": "Start a new assessment?",
+  "confirmText": "This result stays available at its link until it is deleted 30 days after the last update. Copy the link first if you want to come back to it.",
+  "confirmYes": "Start new assessment",
+  "cancel": "Cancel",
+  "failedTitle": "Assessment could not be completed",
+  "stopped": "The analysis service did not respond. Previously completed steps have been saved.",
+  "notFoundTitle": "Assessment not found. It may have been deleted.",
+  "tryAgain": "Retry",
+  "tryAgainIn": "Retry in {wait}",
+  "loading": "Loading assessment...",
+  "facts": {
+    "purpose": "the intended purpose",
+    "domain": "the operational domain",
+    "affected_people": "the affected categories of individuals",
+    "role": "whether you develop or deploy the system",
+    "real_time": "whether identification occurs in real time"
+  },
+  "activity": {
+    "extract_facts": [
+      "Reviewing system description",
+      "Extracting intended purpose",
+      "Identifying users and affected individuals",
+      "Flagging missing informational scope"
+    ],
+    "check_prohibited": [
+      "Evaluating against Article 5 prohibited practices",
+      "Checking manipulation and vulnerability exploitation risks (Art. 5(1)(a)–(b))",
+      "Screening for social scoring mechanisms (Art. 5(1)(c))",
+      "Checking emotion recognition and biometric categorization rules (Art. 5(1)(f)–(h))"
+    ],
+    "check_high_risk": [
+      "Checking high-risk domains listed in Annex III",
+      "Cross-referencing Annex I product safety legislation",
+      "Assessing applicability of Article 6(3) exceptions"
+    ],
+    "check_transparency": [
+      "Evaluating Article 50 transparency mandates",
+      "Checking for chatbots, deepfakes, or AI-generated media"
+    ],
+    "determine_role": [
+      "Determining organizational role: Provider or Deployer",
+      "Checking reclassification triggers under Article 25"
+    ],
+    "list_obligations": [
+      "Mapping applicable role-specific obligations",
+      "Establishing effective enforcement deadlines"
+    ],
+    "verify_citations": [
+      "Cross-checking references against official regulatory text",
+      "Verifying article and paragraph accuracy"
+    ],
+    "report": [
+      "Generating final compliance report"
+    ]
+  }
+}

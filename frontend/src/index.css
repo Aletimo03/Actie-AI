@@ -30,6 +30,7 @@
   --ring: #7f5a12;
   --gold: #e8ad54;
   --gold-ink: #7f5a12;
+  --gold-glow: #c9a063; /* antique gold: hover glows on the dark hero, not the bright icon gold */
   --muted-soft: #7a6d5c; /* steps not reached yet: 4.95:1 on the card */
   --panel: #f6f0e4; /* the side panel: a softer surface than the paper */
   --focus: var(--ring); /* 5.8:1 on ivory; the header sets the bright gold, 9.8:1 on black */
@@ -59,6 +60,7 @@
   --color-ring: var(--ring);
   --color-gold: var(--gold);
   --color-gold-ink: var(--gold-ink);
+  --color-gold-glow: var(--gold-glow);
   --color-muted-soft: var(--muted-soft);
   --color-panel: var(--panel);
   --font-serif: "Source Serif 4 Variable", ui-serif, Georgia, serif;
@@ -78,7 +80,7 @@
   /* Read, not glanced at: 17 px body text, 1.6 line height. */
   body {
     overflow-x: clip;
-    @apply bg-background font-sans text-foreground antialiased;
+    @apply bg-primary font-sans text-foreground antialiased; /* black, like the edges; pages lay their own surface */
     font-size: 1.0625rem;
     line-height: 1.6;
   }
@@ -105,4 +107,124 @@
 :focus-visible {
   outline: 2px solid var(--focus) !important;
   outline-offset: 2px;
+}
+
+/* The assessment pages, on the dark backdrop: the same components, the tokens re-mapped.
+   Text 15.6:1 on the sheet, muted text 8.4:1, gold links and done steps 8.9:1. Buttons
+   turn gold with black text, like the send button on the first screen. */
+.ink-dark {
+  --background: #1b1916;
+  --foreground: #f3eee4;
+  --card: #1b1916;
+  --card-foreground: #f3eee4;
+  --primary: var(--gold);
+  --primary-foreground: #0c0b0e;
+  --secondary: rgb(255 255 255 / 0.08);
+  --secondary-foreground: #f3eee4;
+  --muted: rgb(255 255 255 / 0.08);
+  --muted-foreground: rgb(243 238 228 / 0.72);
+  --muted-soft: rgb(243 238 228 / 0.55);
+  --accent: rgb(255 255 255 / 0.08);
+  --accent-foreground: #f3eee4;
+  --border: rgb(255 255 255 / 0.12);
+  --input: rgb(255 255 255 / 0.3);
+  --destructive: #ff9b8c;
+  --gold-ink: #e3b36a;
+  --ring: var(--gold);
+  --focus: var(--gold);
+  color: var(--foreground);
+  color-scheme: dark;
+}
+
+/* Printed (or saved as PDF), a report is black on white paper, without the page around it. */
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+  .ink-dark {
+    --foreground: #1f1b16;
+    --card-foreground: #1f1b16;
+    --muted-foreground: #554a3d;
+    --border: #e2d7c1;
+    --gold-ink: #7f5a12;
+    --destructive: #b42318;
+    color: var(--foreground);
+    color-scheme: light;
+  }
+}
+
+/* The step under way: a light passing over the words, as in "thinking" lines, and each new
+   message rising in. Reduced motion (above) stops both; the text stays readable. */
+.shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--muted-foreground) 0%,
+      var(--muted-foreground) 40%,
+      var(--gold) 50%,
+      var(--muted-foreground) 60%,
+      var(--muted-foreground) 100%
+    )
+    0 0 / 250% 100%;
+  background-clip: text;
+  color: transparent;
+  animation:
+    activity-in 400ms ease-out,
+    shimmer 2.4s linear infinite;
+}
+@keyframes shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+@keyframes activity-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* The step under way glows in and out, slowly: noticed, not flashing. */
+.step-live {
+  animation: step-glow 2.4s ease-in-out infinite;
+}
+@keyframes step-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(232 173 84 / 0);
+  }
+  50% {
+    box-shadow: 0 0 12px 2px rgb(232 173 84 / 0.55);
+  }
+}
+
+/* The first screen's hover, on the assessment pages too: an antique-gold glow on buttons
+   and answer fields, not a change of fill. */
+.ink-dark [data-slot="button"],
+.ink-dark [data-slot="textarea"] {
+  transition:
+    border-color 200ms,
+    box-shadow 200ms,
+    background-color 150ms;
+}
+.ink-dark [data-slot="button"]:hover:not(:disabled) {
+  box-shadow: 0 0 18px -4px rgb(201 160 99 / 0.5);
+}
+.ink-dark [data-slot="button"][data-variant="outline"]:hover:not(:disabled),
+.ink-dark [data-slot="textarea"]:hover {
+  border-color: rgb(201 160 99 / 0.7);
+  background-color: transparent;
+}
+.ink-dark [data-slot="textarea"]:hover {
+  box-shadow: 0 0 22px -6px rgb(201 160 99 / 0.45);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
 }

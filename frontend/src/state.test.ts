@@ -9,14 +9,14 @@ describe("reduce", () => {
   it("follows a run from the first step to the report", () => {
     let view: View = reduce({ kind: "describing" }, { type: "run", id: null });
     view = reduce(view, { type: "start", id: "a1" });
-    view = reduce(view, { type: "step", label: "Reading the description" });
-    expect(view).toEqual({ kind: "running", id: "a1", steps: ["Reading the description"] });
+    view = reduce(view, { type: "step", step: "extract_facts", label: "Reading the description" });
+    expect(view).toEqual({ kind: "running", id: "a1", steps: ["Reading the description"], last: "extract_facts" });
     expect(reduce(view, { type: "result", assessment }).kind).toBe("done");
   });
 
   it("asks when the run pauses, and keeps the id when a run fails", () => {
     const paused = { id: "a1", status: "needs_answers", description: "A bank scores credit.", answers: [], questions: [{ id: "role", text: "?" }] };
-    const asking = reduce({ kind: "running", id: "a1", steps: [] }, {
+    const asking = reduce({ kind: "running", id: "a1", steps: [], last: null }, {
       type: "result",
       assessment: paused as Assessment,
     });
@@ -40,7 +40,7 @@ describe("reduce", () => {
   });
 
   it("ignores a late step once the run is over", () => {
-    const done = reduce({ kind: "running", id: "a1", steps: [] }, { type: "result", assessment });
-    expect(reduce(done, { type: "step", label: "late" })).toBe(done);
+    const done = reduce({ kind: "running", id: "a1", steps: [], last: null }, { type: "result", assessment });
+    expect(reduce(done, { type: "step", step: "report", label: "late" })).toBe(done);
   });
 });

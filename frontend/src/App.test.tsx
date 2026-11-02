@@ -29,7 +29,7 @@ afterEach(() => vi.clearAllMocks());
 const describeSystem = async () => {
   const user = userEvent.setup();
   render(<App />);
-  await user.type(screen.getByLabelText("Description of the AI system"), "A bank scores consumers' credit-worthiness.");
+  await user.type(screen.getByLabelText("AI system description"), "A bank scores consumers' credit-worthiness.");
   await user.click(screen.getByRole("button", { name: "Start assessment" }));
   return user;
 };
@@ -46,10 +46,10 @@ it("goes from the description to the questions to the report, and keeps the id i
 
   const user = await describeSystem();
   expect(client.startAssessment).toHaveBeenCalledWith("A bank scores consumers' credit-worthiness.", "en", expect.any(AbortSignal));
-  expect(location.pathname).toBe(`/a/${ID}`);
+  expect(location.pathname).toBe(`/assessment/${ID}`);
 
   await user.type(await screen.findByLabelText("Did you build it?"), "Yes, and we use it.");
-  await user.click(screen.getByRole("button", { name: "Submit answers" }));
+  await user.click(screen.getByRole("button", { name: "Submit responses" }));
   expect(client.sendAnswers).toHaveBeenCalledWith(ID, { role: "Yes, and we use it." }, expect.any(AbortSignal));
   expect(await screen.findByRole("heading", { level: 2, name: "High-risk AI system" })).toBeInTheDocument();
 });
@@ -57,9 +57,9 @@ it("goes from the description to the questions to the report, and keeps the id i
 it("refuses a description that is too short without calling the API", async () => {
   const user = userEvent.setup();
   render(<App />);
-  await user.type(screen.getByLabelText("Description of the AI system"), "A chatbot.");
+  await user.type(screen.getByLabelText("AI system description"), "A chatbot.");
   await user.click(screen.getByRole("button", { name: "Start assessment" }));
-  expect(screen.getByRole("alert")).toHaveTextContent("Enter at least 20 characters (10 entered).");
+  expect(screen.getByRole("alert")).toHaveTextContent("Please enter at least 20 characters (10 entered).");
   expect(client.startAssessment).not.toHaveBeenCalled();
 });
 
@@ -81,14 +81,14 @@ it("continues a run the model stopped, from where it stopped", async () => {
   );
   vi.mocked(client.continueAssessment).mockReturnValue(stream({ event: "result", data: done }));
   const user = await describeSystem();
-  expect(await screen.findByText(/The completed steps have been saved/)).toBeInTheDocument();
+  expect(await screen.findByText(/Previously completed steps have been saved/)).toBeInTheDocument();
   await user.click(screen.getByRole("button", { name: "Retry" }));
   expect(client.continueAssessment).toHaveBeenCalledWith(ID, expect.any(AbortSignal));
   expect(await screen.findByRole("heading", { level: 2, name: "High-risk AI system" })).toBeInTheDocument();
 });
 
 it("opens an assessment from its link", async () => {
-  history.replaceState(null, "", `/a/${ID}`);
+  history.replaceState(null, "", `/assessment/${ID}`);
   vi.mocked(client.getAssessment).mockResolvedValue(done);
   render(<App />);
   expect(await screen.findByRole("heading", { level: 2, name: "High-risk AI system" })).toBeInTheDocument();
@@ -106,12 +106,15 @@ it("shows where the user is, skips to the content and focuses the result", async
   render(<App />);
   expect(screen.getByRole("link", { name: "Skip to main content" })).toHaveAttribute("href", "#main");
   expect(screen.queryByRole("navigation", { name: "Assessment steps" })).not.toBeInTheDocument();
+  expect(screen.getByRole("group", { name: "Language" })).toBeInTheDocument();
 
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText("Description of the AI system"), "A bank scores consumers' credit-worthiness.");
+  await user.type(screen.getByLabelText("AI system description"), "A bank scores consumers' credit-worthiness.");
   await user.click(screen.getByRole("button", { name: "Start assessment" }));
   const result = await screen.findByRole("heading", { level: 2, name: "High-risk AI system" });
   expect(result).toHaveFocus();
+  // The report is in the language it was asked in: no switching once it has started.
+  expect(screen.queryByRole("group", { name: "Language" })).toBeNull();
   expect(screen.getByRole("navigation", { name: "Assessment steps" }).querySelector("[aria-current=step]"))
     .toHaveTextContent("Result");
 });
@@ -124,7 +127,7 @@ it("explains a dropped connection in words and offers to read the result", async
     })(),
   );
   await describeSystem();
-  expect(await screen.findByText(/The connection was interrupted/)).toBeInTheDocument();
+  expect(await screen.findByText(/Connection lost/)).toBeInTheDocument();
   expect(screen.queryByText(/Failed to fetch/)).toBeNull();
   vi.mocked(client.getAssessment).mockResolvedValue(done);
   await userEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -132,25 +135,31 @@ it("explains a dropped connection in words and offers to read the result", async
   expect(client.startAssessment).toHaveBeenCalledTimes(1);
 });
 
-it("lets the user start over from the questions", async () => {
-  vi.mocked(client.startAssessment).mockReturnValue(
-    stream({ event: "result", data: { id: ID, status: "needs_answers", description: "A bank scores credit.", answers: [], questions: [{ id: "role", text: "Did you build it?" }] } }),
-  );
-  const user = await describeSystem();
-  await user.click(await screen.findByRole("button", { name: "Start again" }));
-  expect(screen.getByLabelText("Description of the AI system")).toBeInTheDocument();
-  expect(location.pathname).toBe("/");
+it("does not keep spinning when the stream closes without a result", async () => {
+  vi.mocked(client.startAssessment).mockReturnValue(stream({ event: "start", data: { id: ID } }));
+  await describeSystem();
+  expect(await screen.findByText(/Connection lost/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
 });
 
 it("shows the description and the answers next to the result", async () => {
-  history.replaceState(null, "", `/a/${ID}`);
+  history.replaceState(null, "", `/assessment/${ID}`);
   vi.mocked(client.getAssessment).mockResolvedValue({
     ...done,
     answers: [{ question: "Did you build the system?", answer: "We bought it from a vendor." }],
   });
   render(<App />);
-  const submitted = await screen.findByRole("region", { name: "Description assessed" });
+  const submitted = await screen.findByRole("region", { name: "Submitted description" });
   expect(submitted).toHaveTextContent(done.description);
   expect(submitted).toHaveTextContent("Did you build the system?");
   expect(submitted).toHaveTextContent("We bought it from a vendor.");
+});
+
+it("opens a link shared with the first address, /a/<id>, under the new one", async () => {
+  history.replaceState(null, "", `/a/${ID}`);
+  vi.mocked(client.getAssessment).mockResolvedValue(done);
+  render(<App />);
+  expect(await screen.findByRole("heading", { level: 2, name: "High-risk AI system" })).toBeInTheDocument();
+  expect(client.getAssessment).toHaveBeenCalledWith(ID);
+  expect(location.pathname).toBe(`/assessment/${ID}`);
 });

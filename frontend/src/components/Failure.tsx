@@ -30,9 +30,9 @@ export function Failure({ lang, message, retry, retryAfter, onRetry, onNew }: Pr
   const title = retry === "new" ? t.notFoundTitle : t.failedTitle;
   return (
     <div className="space-y-4">
-      <Alert variant="destructive" className="border-destructive/40 bg-red-50">
+      <Alert variant="destructive" className="border-destructive/40 bg-red-500/10">
         <CircleAlert aria-hidden />
-        <AlertTitle ref={heading} tabIndex={-1} className="text-xl outline-none">
+        <AlertTitle ref={heading} tabIndex={-1} className="line-clamp-none text-xl outline-none">
           {title}
         </AlertTitle>
         <AlertDescription className="text-base">

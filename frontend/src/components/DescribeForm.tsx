@@ -2,7 +2,7 @@
  * The first screen is the tool itself, on the dark hero: a heading, then the description as
  * one composed object (text, examples, send). What it checks sits below.
  */
-import { Briefcase, Landmark, MessageSquare } from "lucide-react";
+import { Briefcase, Info, Landmark, MessageSquare } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { Lang } from "@/api/client";
 import { STRINGS } from "@/i18n";
@@ -49,15 +49,15 @@ export function DescribeForm({ lang, initial, error, onSubmit }: Props) {
       }}
     >
       <div className="space-y-5">
-        <h2 className="max-w-[20ch] text-5xl leading-[1.05] font-semibold text-balance lg:text-[4.25rem]">
+        <h2 className="max-w-[24ch] text-[2.85rem] leading-[1.05] font-semibold text-balance lg:text-[4rem]">
           {t.headline}
         </h2>
-        <p className="max-w-[56ch] text-lg text-primary-foreground/80">
+        <p className="max-w-[56ch] text-lg text-primary-foreground/90">
           {t.intro}
         </p>
       </div>
 
-      <div className="max-w-3xl rounded-2xl border border-white/15 bg-black/55 p-5 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)] backdrop-blur-md focus-within:border-gold focus-within:ring-1 focus-within:ring-gold has-[textarea[aria-invalid=true]]:border-[#ffb4a8] sm:p-6">
+      <div className="max-w-3xl rounded-2xl border border-white/25 bg-[#1b1916]/80 p-6 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7)] backdrop-blur-md transition-[border-color,box-shadow] duration-200 hover:border-gold-glow/60 hover:shadow-[0_20px_60px_-20px_rgba(0,0,0,0.7),0_0_28px_-6px_rgba(201,160,99,0.4)] focus-within:border-gold focus-within:ring-1 focus-within:ring-gold has-[textarea[aria-invalid=true]]:border-[#ffb4a8] sm:p-7">
         <textarea
           ref={area}
           id={field}
@@ -67,7 +67,7 @@ export function DescribeForm({ lang, initial, error, onSubmit }: Props) {
           placeholder={t.placeholder}
           aria-invalid={Boolean(message)}
           aria-describedby={`${field}-hint ${field}-count`}
-          className="block max-h-[50vh] min-h-28 w-full resize-none overflow-y-auto bg-transparent text-lg leading-relaxed text-primary-foreground placeholder:text-primary-foreground/55 focus-visible:outline-none!"
+          className="block max-h-[50vh] min-h-28 w-full resize-none overflow-y-auto bg-transparent text-lg leading-relaxed text-primary-foreground placeholder:text-primary-foreground/65 focus-visible:outline-none!"
           onChange={(event) => setText(event.target.value)}
         />
         {/* The box holds only what belongs to the text: its length and sending it. */}
@@ -113,7 +113,7 @@ export function DescribeForm({ lang, initial, error, onSubmit }: Props) {
               <button
                 key={example.label}
                 type="button"
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-primary-foreground/90 transition-colors hover:border-white/30 hover:bg-white/10"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 text-primary-foreground/90 transition-[border-color,box-shadow] duration-200 hover:border-gold-glow/70 hover:shadow-[0_0_18px_-4px_rgba(201,160,99,0.5)]"
                 onClick={() => {
                   setText(example.text);
                   area.current?.focus();
@@ -129,6 +129,10 @@ export function DescribeForm({ lang, initial, error, onSubmit }: Props) {
           })}
         </div>
         <p className="text-primary-foreground/70">{t.durationHint}</p>
+        <p className="flex gap-2 text-primary-foreground/70">
+          <Info aria-hidden className="mt-1 size-4 shrink-0 text-gold" />
+          {t.aiNotice}
+        </p>
       </div>
     </form>
   );

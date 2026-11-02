@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 export function Scope({ lang, className }: { lang: Lang; className?: string }) {
   const t = STRINGS[lang];
   return (
-    <div className={cn("space-y-9 text-[0.95rem]", className)}>
+    <div className={cn("space-y-9 text-base", className)}>
       <section aria-labelledby="scope-title">
         <h2 id="scope-title" className="mb-3 text-lg font-semibold">
           {t.scopeTitle}

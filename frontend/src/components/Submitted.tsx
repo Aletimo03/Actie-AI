@@ -6,7 +6,7 @@ import type { Submitted as SubmittedData } from "@/state";
 export function Submitted({ submitted, lang }: { submitted: SubmittedData; lang: Lang }) {
   const t = STRINGS[lang];
   return (
-    <section aria-labelledby="submitted-title" className="space-y-3 text-sm">
+    <section aria-labelledby="submitted-title" className="space-y-3 text-[0.95rem]">
       <h2 id="submitted-title" className="text-lg font-semibold">
         {t.submittedTitle}
       </h2>
@@ -17,7 +17,7 @@ export function Submitted({ submitted, lang }: { submitted: SubmittedData; lang:
           <dl className="space-y-2">
             {submitted.answers.map(({ question, answer }) => (
               <div key={question}>
-                <dt className="text-sm text-muted-foreground">{question}</dt>
+                <dt className="text-muted-foreground">{question}</dt>
                 <dd className="whitespace-pre-wrap [overflow-wrap:anywhere]">{answer}</dd>
               </div>
             ))}

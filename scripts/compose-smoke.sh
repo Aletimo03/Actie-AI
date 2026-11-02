@@ -18,7 +18,7 @@ status() {  # status <path> <expected>
 }
 
 check "UI page"                         status / 200
-check "client route falls back to UI"   status /a/00000000-0000-4000-8000-000000000000 200
+check "client route falls back to UI"   status /assessment/00000000-0000-4000-8000-000000000000 200
 check "API through the proxy"           status /api/health 200
 check "API liveness (no database)"      status /api/livez 200
 check "API reaches the database"        status /api/assessments/00000000-0000-4000-8000-000000000000 404

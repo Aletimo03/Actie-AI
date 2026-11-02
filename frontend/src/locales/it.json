@@ -1,0 +1,171 @@
+{
+  "title": "Valutazione AI Act",
+  "headline": "Verifica la conformità del tuo sistema di IA all'AI Act",
+  "stepOf": "Fase {n} di {total}",
+  "examplesLabel": "Esempi pratici",
+  "examples": [
+    {
+      "label": "Selezione del personale",
+      "text": "Sviluppiamo e commercializziamo un software che analizza e classifica i CV dei candidati. I selezionatori utilizzano i punteggi per convocare i candidati ai colloqui."
+    },
+    {
+      "label": "Assistente virtuale per clienti",
+      "text": "Sul sito del nostro e-commerce, un chatbot da noi sviluppato risponde alle richieste dei clienti riguardanti ordini e resi."
+    },
+    {
+      "label": "Valutazione del merito creditizio",
+      "text": "La nostra banca ha sviluppato internamente un modello per valutare la solvibilità dei richiedenti un prestito personale, utilizzato per le delibere di credito."
+    }
+  ],
+  "durationHint": "La valutazione richiede generalmente meno di un minuto. Per alcuni sistemi potrebbero essere richieste informazioni aggiuntive.",
+  "aiNotice": "Actie AI utilizza un modello di IA e può commettere errori.",
+  "submittedTitle": "Descrizione inviata",
+  "summaryTitle": "Sintesi",
+  "summaryRisk": "Livello di rischio",
+  "summaryRole": "Ruolo della tua organizzazione",
+  "summaryObligations": "Obblighi applicabili",
+  "summaryInForce": "Già in vigore",
+  "summaryNext": "Prossima decorrenza",
+  "summaryVerified": "Riferimenti normativi verificati",
+  "print": "Stampa o salva in PDF",
+  "colFrom": "Applicabile dal",
+  "colParty": "Soggetto responsabile",
+  "colProvision": "Disposizione normativa",
+  "inForceTag": "già applicabile",
+  "scopeTitle": "Ambito della valutazione",
+  "scope": [
+    "Identificazione delle pratiche vietate",
+    "Classificazione dei sistemi ad alto rischio",
+    "Verifica degli obblighi di trasparenza",
+    "Determinazione del ruolo della tua organizzazione",
+    "Elenco degli obblighi e relative date di decorrenza",
+    "Verifica puntuale dei riferimenti rispetto al testo normativo"
+  ],
+  "sourceTitle": "Riferimenti normativi",
+  "consolidated": "Regolamento (UE) 2024/1689, testo consolidato al {date}.",
+  "regulation": "Regolamento (UE) 2024/1689 su EUR-Lex",
+  "privacyTitle": "Trattamento dei dati",
+  "privacyText": "La descrizione viene analizzata tramite i modelli di intelligenza artificiale di Anthropic (USA). Le valutazioni vengono rimosse automaticamente dopo 30 giorni dall'ultima modifica.",
+  "languageLabel": "Lingua",
+  "answersTitle": "Risposte fornite",
+  "skip": "Vai al contenuto principale",
+  "flowLabel": "Fasi del processo",
+  "flow": [
+    "Descrizione",
+    "Analisi",
+    "Chiarimenti",
+    "Esito"
+  ],
+  "nextStep": "Elaborazione della fase successiva...",
+  "elapsed": "Tempo trascorso: {seconds} s. La durata media della valutazione è di 20–40 secondi.",
+  "connectionLost": "Connessione interrotta. La valutazione potrebbe essere stata completata: clicca su Riprova per aggiornare.",
+  "unreachable": "Servizio momentaneamente non disponibile. Verifica la connessione di rete o riprova a breve.",
+  "intro": "Descrivi il tuo sistema di IA in poche righe: finalità, utilizzatori e persone impattate. Riceverai un report dettagliato con la categoria di rischio, il tuo ruolo aziendale, gli obblighi normativi con le relative scadenze e i riferimenti agli articoli ufficiali.",
+  "description": "Descrizione del sistema di IA",
+  "placeholder": "Qual è la finalità del sistema, chi lo utilizza e quali decisioni o processi supporta?",
+  "tooShort": "Inserisci almeno 20 caratteri (caratteri attuali: {n}).",
+  "check": "Avvia valutazione",
+  "working": "Valutazione in corso...",
+  "questionsTitle": "Informazioni integrative richieste",
+  "questionsIntro": "Per completare l'analisi sono necessari i seguenti chiarimenti. Lascia il campo vuoto se l'informazione non è disponibile.",
+  "continue": "Invia risposte",
+  "risk": {
+    "prohibited": "Pratica di IA vietata",
+    "high": "Sistema di IA ad alto rischio",
+    "limited": "Rischio limitato",
+    "minimal": "Rischio minimo"
+  },
+  "riskMeaning": {
+    "prohibited": "Sistema non consentito: ne è vietata l'immissione sul mercato, la messa in servizio o l'uso nell'UE (Articolo 5).",
+    "high": "Consentito previa conformità ai requisiti stringenti e agli obblighi previsti dal Capo III.",
+    "limited": "Consentito. Sono richiesti gli adempimenti in materia di trasparenza di cui all'Articolo 50.",
+    "minimal": "Nessun obbligo specifico, fatti salvi i principi generali di alfabetizzazione sull'IA (Articolo 4)."
+  },
+  "role": {
+    "provider": "Fornitore (Provider)",
+    "deployer": "Utilizzatore (Deployer)",
+    "provider_and_deployer": "Fornitore e Utilizzatore (Provider & Deployer)",
+    "unknown": "Non determinabile sulla base della descrizione fornita"
+  },
+  "bannedBy": "Pratica vietata ai sensi di {provision}",
+  "highRiskBy": "Classificazione ad alto rischio ai sensi di {provision}",
+  "exception": "Deroga ex Articolo 6, paragrafo 3",
+  "becameProvider": "Assunzione degli obblighi del fornitore (Articolo 25)",
+  "uncertainTitle": "Punti da approfondire",
+  "uncertainText": "I seguenti aspetti richiedono maggiore chiarezza. L'analisi è stata condotta applicando il principio di massima cautela:",
+  "assumedText": "Elemento non specificato nella descrizione:",
+  "obligations": "Obblighi",
+  "who": {
+    "provider": "fornitore",
+    "deployer": "deployer"
+  },
+  "transparency": "Obblighi di trasparenza (Articolo 50)",
+  "otherRole": "Obblighi a carico dell'altra parte (a titolo informativo)",
+  "notes": "Note operative",
+  "citations": "Riferimenti normativi citati",
+  "verified": "Citazione verificata nel testo ufficiale",
+  "notFound": "Citazione non rinvenuta nel testo ufficiale",
+  "unverifiedTitle": "Riferimenti da verificare",
+  "unverifiedText": "Si consiglia di verificare i seguenti riferimenti nel testo del regolamento prima dell'applicazione:",
+  "lawAsOf": "Fonte normativa: Regolamento (UE) 2024/1689, versione consolidata del {date}.",
+  "notAdvice": "Nota legale: Questo report è generato automaticamente a scopo informativo e non costituisce parere legale.",
+  "copyLink": "Copia link",
+  "copied": "Link copiato negli appunti",
+  "linkWarning": "Attenzione: chiunque sia in possesso di questo link potrà visualizzare l'esito della valutazione.",
+  "newAssessment": "Nuova valutazione",
+  "confirmTitle": "Avviare una nuova valutazione?",
+  "confirmText": "Questo esito resta disponibile al suo link fino alla cancellazione, 30 giorni dopo l'ultima modifica. Copia prima il link se vuoi tornarci.",
+  "confirmYes": "Avvia nuova valutazione",
+  "cancel": "Annulla",
+  "failedTitle": "Impossibile completare la valutazione",
+  "stopped": "Il servizio di analisi non ha risposto. I progressi effettuati fino a questo momento sono stati salvati.",
+  "notFoundTitle": "Valutazione non trovata. Il report potrebbe essere stato rimosso.",
+  "tryAgain": "Riprova",
+  "tryAgainIn": "Riprova tra {wait}",
+  "loading": "Caricamento della valutazione in corso...",
+  "facts": {
+    "purpose": "la finalità d'uso prevista",
+    "domain": "il contesto o settore di applicazione",
+    "affected_people": "le categorie di soggetti interessati",
+    "role": "la distinzione tra sviluppo ed utilizzo del sistema",
+    "real_time": "se l'identificazione avviene in tempo reale"
+  },
+  "activity": {
+    "extract_facts": [
+      "Analisi della descrizione fornita",
+      "Identificazione della finalità d'uso",
+      "Individuazione di utenti e soggetti interessati",
+      "Rilevazione di eventuali ambiguità informative"
+    ],
+    "check_prohibited": [
+      "Verifica delle pratiche vietate ex Articolo 5",
+      "Analisi dei rischi di manipolazione e sfruttamento di vulnerabilità (Art. 5(1)(a)–(b))",
+      "Verifica della presenza di sistemi di social scoring (Art. 5(1)(c))",
+      "Analisi dei sistemi di riconoscimento delle emozioni e categorizzazione biometrica (Art. 5(1)(f)–(h))"
+    ],
+    "check_high_risk": [
+      "Valutazione dei casi ad alto rischio elencati nell'Allegato III",
+      "Verifica della normativa sui prodotti di cui all'Allegato I",
+      "Valutazione dell'applicabilità della deroga ex Articolo 6(3)"
+    ],
+    "check_transparency": [
+      "Verifica degli obblighi di trasparenza ex Articolo 50",
+      "Analisi per presenza di chatbot, deepfake o contenuti generati da IA"
+    ],
+    "determine_role": [
+      "Qualificazione del ruolo organizzativo: Fornitore o Deployer",
+      "Verifica del cambio di ruolo da Deployer a Fornitore (Articolo 25)"
+    ],
+    "list_obligations": [
+      "Mappatura degli obblighi applicabili in base al ruolo",
+      "Definizione dei termini di decorrenza ed efficacia"
+    ],
+    "verify_citations": [
+      "Riscontro di ogni citazione sul testo ufficiale del regolamento",
+      "Verifica della corrispondenza di articoli e paragrafi"
+    ],
+    "report": [
+      "Generazione della relazione finale di valutazione"
+    ]
+  }
+}
