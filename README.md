@@ -1,28 +1,39 @@
 # Actie AI
 
-Describe the AI system you are building and get a first check against the
-EU AI Act (Regulation (EU) 2024/1689): is it prohibited, is it high-risk,
-which transparency rules apply, what your obligations are, with every
-claim cited to the official text.
+Describe an AI system in a few sentences and see what the EU AI Act
+(Regulation (EU) 2024/1689) requires of it: whether it is prohibited or high-risk,
+which transparency rules apply, your role, your obligations with the date each one
+applies from, and the articles they come from. Every quotation in the report is
+checked against the official text. English and Italian.
 
-> Status: early development. Not legal advice.
+**Live:** https://13-63-133-200.sslip.io
+
+> Not legal advice. A first check, to know what to ask a lawyer.
 
 ## How it works
 
-1. **Ingestion** turns the official AI Act text (EUR-Lex, English and
-   Italian) into one chunk per article paragraph or annex point, embeds
-   them and stores them in Postgres with pgvector.
-2. **Retrieval** finds the relevant chunks with hybrid search (vector +
-   full-text, merged with reciprocal rank fusion) and a re-ranker.
-3. **The agent** (planned) walks the Act's decision steps and returns a
-   report whose citations are verified against the stored text.
+1. **The law, prepared once.** The consolidated text from EUR-Lex (English and Italian)
+   is split into one chunk per article paragraph, point and annex entry, embedded, and
+   stored in Postgres with pgvector.
+2. **Retrieval.** Vector and keyword search, merged with reciprocal rank fusion and
+   re-ranked by a cross-encoder: the right provision is in the top 5 for 92% of the
+   test questions.
+3. **The assessment.** A LangGraph agent follows the Act's own order: extract the facts,
+   ask the user what the description leaves open, check the prohibited practices
+   (Art. 5), high-risk classification (Art. 6, Annexes I and III), transparency (Art. 50),
+   the role (Art. 25), then list the obligations and verify every citation. Progress
+   streams to the browser step by step (Server-Sent Events).
+4. **The safeguards.** When a fact is unknown the agent takes the stricter reading and
+   says so; an evaluation on 52 labelled systems must show zero under-classifications.
 
 ## Stack
 
-Python 3.12 · uv · LangGraph · LiteLLM · FastAPI · Postgres 16 + pgvector ·
-Ollama (`bge-m3` embeddings) · Docker Compose · pytest · ruff
-
-Frontend: React 19 · TypeScript · Vite · Tailwind CSS + shadcn/ui · Vitest
+| | |
+|---|---|
+| Agent and API | Python 3.12, uv, LangGraph, LiteLLM (Claude Haiku 5.5), FastAPI, Postgres 16 + pgvector |
+| Retrieval | bge-m3 embeddings (Ollama), Postgres full text, bge-reranker-v2-m3 |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS + shadcn/ui, Vitest |
+| Delivery | Docker, GitHub Actions (tests, image smoke test, Helm checks, GHCR with SBOM), Helm on kind, Terraform on AWS |
 
 ## Local setup
 
@@ -64,6 +75,10 @@ Requires Node 24 or newer. `frontend/.npmrc` installs only package versions at l
 `npm run types` in `frontend/` to regenerate `openapi.json` and the TypeScript types;
 CI fails if they are stale.
 
+The interface texts are in [`frontend/src/locales/en.json`](frontend/src/locales/en.json)
+and [`it.json`](frontend/src/locales/it.json): edit them there, keeping `{placeholders}`
+as they are; a test fails if the two languages differ in keys or placeholders.
+
 ## Kubernetes (kind)
 
 The same images on a local Kubernetes cluster, deployed with the Helm chart in
@@ -82,6 +97,18 @@ secret, the database password), and installs the chart with `values-kind.yaml`. 
 cluster: `--set image.tag=sha-<commit>` with the images CI publishes to GHCR.
 `deploy/helm/check.sh` lints the chart and validates every value combination against the
 Kubernetes schemas without a cluster (needs helm and kubeconform); CI runs it on every push.
+
+## AWS
+
+The live site is one EC2 instance in `eu-north-1` running the same images with Compose,
+behind Caddy (Let's Encrypt certificate on an sslip.io name), created with Terraform. No
+SSH: releases and rollbacks go through Session Manager.
+
+```bash
+deploy/aws/deploy.sh <full-commit-sha>   # images CI published for that commit
+```
+
+Setup, costs and removal: [`deploy/aws/README.md`](deploy/aws/README.md).
 
 ## Ingestion pipeline
 
@@ -148,9 +175,9 @@ ingestion/              offline pipeline: fetch, parse, chunk, validate, embed, 
 backend/app/retrieval/  vector, keyword and hybrid search, re-ranking
 backend/app/agent/      the LangGraph assessment: checks, role, obligations, citations
 backend/app/api.py      HTTP API: start, answer, continue, stream progress (SSE)
-deploy/                 Helm chart (helm/actie) and the kind cluster (kind/)
-frontend/               React UI; src/api/ holds the client and the generated types;
-                        Dockerfile and nginx/ for the image
+deploy/                 Helm chart (helm/actie), kind cluster (kind/), AWS (aws/)
+frontend/               React UI; src/api/ holds the client and the generated types,
+                        src/locales/ the EN/IT texts; Dockerfile and nginx/ for the image
 db/init/                SQL run once when the database is created
 tests/                  pytest suite
 ```
