@@ -106,6 +106,7 @@ export function App() {
 
   useEffect(() => {
     const onBack = () => {
+      abort.current?.abort(); // a run still streaming must not replace the page gone back to
       const id = idInUrl();
       if (id) void load(id);
       else dispatch({ type: "new" });

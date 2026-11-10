@@ -163,3 +163,22 @@ it("opens a link shared with the first address, /a/<id>, under the new one", asy
   expect(client.getAssessment).toHaveBeenCalledWith(ID);
   expect(location.pathname).toBe(`/assessment/${ID}`);
 });
+
+it("stops a running assessment when the user goes back, so its result can't replace the page", async () => {
+  let signal: AbortSignal | undefined;
+  vi.mocked(client.startAssessment).mockImplementation((_text, _lang, s) => {
+    signal = s;
+    return (async function* (): AsyncGenerator<StreamEvent> {
+      yield { event: "start", data: { id: ID } };
+      await new Promise(() => {}); // the run goes on
+    })();
+  });
+  await describeSystem();
+  await waitFor(() => expect(location.pathname).toBe(`/assessment/${ID}`));
+
+  history.replaceState(null, "", "/");
+  dispatchEvent(new PopStateEvent("popstate"));
+
+  expect(await screen.findByLabelText("AI system description")).toBeInTheDocument();
+  expect(signal?.aborted).toBe(true);
+});
