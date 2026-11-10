@@ -312,3 +312,37 @@ def test_a_high_risk_deployer_gets_dated_obligations_checked_against_the_text():
 def test_a_banned_system_gets_no_obligations():
     [state] = run(ScriptedLLM(Facts=[KNOWN], ProhibitedCheck=[BANNED]))
     assert state["report"]["obligations"] == [] and state["report"]["notes"] == []
+
+
+def test_a_ban_found_after_an_answer_reports_the_latest_role_not_an_earlier_rounds():
+    unsure = Facts(**KNOWN.model_dump() | {"rebranded": None})
+    llm = ScriptedLLM(
+        Facts=[unsure, Facts(**KNOWN.model_dump() | {"role": "provider"})],
+        ProhibitedCheck=[CLEAR, BANNED],
+        HighRiskCheck=[HIGH],
+        TransparencyCheck=[NONE],
+    )
+    graph = build_graph(llm, fetch, lookup, InMemorySaver(serde=SERDE), today=lambda: TODAY)
+    config = {"configurable": {"thread_id": "stale-role"}}
+    paused = graph.invoke({"description": "A system.", "lang": "en"}, config)
+    assert [q["id"] for q in paused["__interrupt__"][0].value["questions"]] == ["art25"]
+    report = graph.invoke(Command(resume={"art25": "We build it ourselves."}), config)["report"]
+    assert (report["risk"], report["role"]) == ("prohibited", "provider")
+
+
+def test_a_deployer_who_becomes_a_provider_owes_the_providers_transparency_duties():
+    rebranded = Facts(**KNOWN.model_dump() | {"rebranded": True})
+    llm = ScriptedLLM(
+        Facts=[rebranded],
+        ProhibitedCheck=[CLEAR],
+        HighRiskCheck=[HIGH],
+        TransparencyCheck=[CHATBOT],
+    )
+    graph = build_graph(llm, fetch, lookup, InMemorySaver(serde=SERDE), today=lambda: TODAY)
+    report = graph.invoke(
+        {"description": "A system.", "lang": "en"}, {"configurable": {"thread_id": "art25"}}
+    )["report"]
+    assert report["role"] == "provider_and_deployer"
+    assert [d["chunk_id"] for d in report["transparency_duties"]] == ["en_art50_p1"]
+    assert report["other_role_duties"] == []
+    assert ("en_art50_p1", "provider") in [(o["chunk_id"], o["who"]) for o in report["obligations"]]

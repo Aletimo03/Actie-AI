@@ -43,6 +43,25 @@ PROFILING_QUESTION = {
     "it": "Il sistema valuta, assegna punteggi o classifica singole persone (per esempio "
     "rendimento, affidabilità o comportamento)?",
 }
+# Asked only when the model marks a finding "uncertain" without writing its question.
+FALLBACK_QUESTION = {
+    "annex_i": {
+        "en": "Is the system a safety component of a product covered by the legislation in "
+        "Annex I, or such a product itself?",
+        "it": "Il sistema è un componente di sicurezza di un prodotto disciplinato dalla "
+        "normativa dell'allegato I, o è esso stesso un tale prodotto?",
+    },
+    "annex_iii": {
+        "en": "Is the system used in one of the areas listed in Annex III?",
+        "it": "Il sistema è usato in uno degli ambiti elencati nell'allegato III?",
+    },
+    "exception": {
+        "en": "Does the system only perform a narrow procedural or preparatory task, without "
+        "materially influencing decisions about people?",
+        "it": "Il sistema svolge solo un compito procedurale limitato o preparatorio, senza "
+        "influenzare in modo significativo le decisioni sulle persone?",
+    },
+}
 INFLUENCE_QUESTION = {
     "en": "Does the system's output shape a decision about people (what is decided, for whom, "
     "or in what order), or does a human decide independently without relying on it?",
@@ -138,7 +157,7 @@ def decide(check: HighRiskCheck, facts: Facts, lang: str) -> HighRiskResult:
 
     def ask(name: str, question: str | None) -> None:
         result.uncertain.append(name)
-        result.questions.append(question or name)
+        result.questions.append(question or FALLBACK_QUESTION[name][lang])
 
     def cite(chunk_id: str, quote: str | None, claim: str) -> None:
         result.citations.append(Citation(chunk_id=chunk_id, quote=quote or "", claim=claim))

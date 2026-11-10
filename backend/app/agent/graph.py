@@ -61,6 +61,7 @@ from backend.app.agent.transparency import (
     TransparencyCheck,
     TransparencyResult,
     check_transparency,
+    for_role,
 )
 from backend.app.law import Context
 from backend.app.llm import StructuredLLM
@@ -200,17 +201,19 @@ def report(state: Assessment) -> dict:
     prohibited = state["prohibited"]
     risk = risk_level(state)
     results = latest_results(state)
+    # A ban stops the run after Article 5: the later steps, if an earlier round reached
+    # them, rest on facts that are out of date.
     if risk == "prohibited":
-        high_risk, transparency = None, None
+        high_risk, transparency, role = None, None, None
     else:
-        high_risk, transparency = state["high_risk"], state["transparency"]
+        high_risk, transparency, role = state["high_risk"], state["transparency"], state["role"]
     citations = state["citations"]
     obligations = state["obligations"] if risk != "prohibited" else ObligationsResult()
     return {
         "report": {
             "risk": risk,
-            "role": state["role"].role if "role" in state else state["facts"].role,
-            "became_provider": state["role"].became_provider if "role" in state else [],
+            "role": role.role if role else state["facts"].role,
+            "became_provider": role.became_provider if role else [],
             "banned": prohibited.banned,
             "high_risk_basis": high_risk.basis if high_risk else [],
             "exception": high_risk.exception if high_risk else None,
@@ -280,7 +283,10 @@ def build_graph(
 
     def determine_role(state: Assessment) -> dict:
         result = decide_role(state["facts"], state["high_risk"].is_high_risk, state["lang"])
-        return {"role": result, "questions": asked(result.uncertain, result.questions)}
+        update = {"role": result, "questions": asked(result.uncertain, result.questions)}
+        if result.became_provider:  # Art. 25: they now also owe the provider's Art. 50 duties
+            update["transparency"] = for_role(state["transparency"], result.role)
+        return update
 
     def list_obligations(state: Assessment) -> dict:
         duties = state["transparency"].duties

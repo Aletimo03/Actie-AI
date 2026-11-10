@@ -124,3 +124,12 @@ def test_annex_i_text_is_loaded_only_for_products():
     assert asked[0] == [f"en_{u}" for u in ARTICLE_6 + ANNEX_III]
     assert asked[1] == [f"it_{u}" for u in ARTICLE_6 + ANNEX_III + ANNEX_I]
     assert "Write reasons and questions in Italian." in llm.calls[1][0]
+
+
+def test_an_open_finding_without_a_question_gets_a_readable_one_in_the_users_language():
+    check = HighRiskCheck(
+        annex_i={"applies": "uncertain", "reason": "?"},
+        annex_iii={"applies": "no", "reason": "No."},
+        exception={"applies": "no", "reason": "No.", "influences_decision": "no"},
+    )
+    assert decide(check, Facts(), "it").questions[0].startswith("Il sistema è un componente")

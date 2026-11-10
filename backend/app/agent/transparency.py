@@ -9,7 +9,7 @@ every applicable duty is listed.
 """
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -80,6 +80,34 @@ RULES = {
 }
 
 
+# Asked only when the model marks a finding "uncertain" without writing its question.
+FALLBACK_QUESTION = {
+    "interacts": {
+        "en": "Does the system interact directly with people who may not realise it is an AI?",
+        "it": "Il sistema interagisce direttamente con persone che potrebbero non capire che "
+        "è un'IA?",
+    },
+    "synthetic_content": {
+        "en": "Does the system generate synthetic audio, images, video or text?",
+        "it": "Il sistema genera audio, immagini, video o testi sintetici?",
+    },
+    "emotion_or_biometric": {
+        "en": "Does the system recognise emotions or categorise people from biometric data?",
+        "it": "Il sistema riconosce le emozioni o classifica le persone in base a dati biometrici?",
+    },
+    "deepfake": {
+        "en": "Does the system generate or alter images, audio or video that could pass for real?",
+        "it": "Il sistema genera o altera immagini, audio o video che potrebbero sembrare reali?",
+    },
+    "public_interest_text": {
+        "en": "Does the system generate text published to inform the public on matters of "
+        "public interest?",
+        "it": "Il sistema genera testi pubblicati per informare il pubblico su questioni di "
+        "interesse pubblico?",
+    },
+}
+
+
 class TransparencyCheck(BaseModel):
     interacts: Finding = Field(
         description="50(1): interacts directly with people, unless obviously an AI"
@@ -143,6 +171,18 @@ def roles(role: str | None) -> set[str]:
     return {"provider", "deployer"}
 
 
+def for_role(result: TransparencyResult, role: str | None) -> TransparencyResult:
+    """The same duties, shared out again for a role that Article 25 has changed."""
+    order = list(RULES)
+    every = sorted(result.duties + result.others, key=lambda d: order.index(d.situation))
+    mine = roles(role)
+    return replace(
+        result,
+        duties=[d for d in every if d.who in mine],
+        others=[d for d in every if d.who not in mine],
+    )
+
+
 def decide(check: TransparencyCheck, facts: Facts, lang: str) -> TransparencyResult:
     result = TransparencyResult(check)
     mine = roles(facts.role)
@@ -150,7 +190,7 @@ def decide(check: TransparencyCheck, facts: Facts, lang: str) -> TransparencyRes
         finding: Finding = getattr(check, situation)
         if finding.applies == "uncertain":
             result.uncertain.append(situation)
-            result.questions.append(finding.question or f"Art. 50: {situation}?")
+            result.questions.append(finding.question or FALLBACK_QUESTION[situation][lang])
         elif finding.applies == "yes":
             chunk_id = f"{lang}_{rule.paragraph}"
             duty = Duty(situation, chunk_id, rule.who, rule.duty[lang])
