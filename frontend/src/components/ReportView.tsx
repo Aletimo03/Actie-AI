@@ -346,9 +346,9 @@ function ShareLink({ lang }: { lang: Lang }) {
   );
 }
 
-function List({ items, small }: { items: string[]; small?: boolean }) {
+function List({ items }: { items: string[] }) {
   return (
-    <ul className={cn("list-disc space-y-1 pl-5 marker:text-gold-ink", small && "text-sm")}>
+    <ul className="list-disc space-y-1 pl-5 marker:text-gold-ink">
       {items.map((item) => (
         <li key={item}>{item}</li>
       ))}
