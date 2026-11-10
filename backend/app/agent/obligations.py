@@ -22,9 +22,8 @@ from datetime import date
 from typing import Literal
 
 from backend.app.agent.prohibited import Citation
-from backend.app.agent.transparency import Duty, roles
+from backend.app.agent.transparency import Duty, Who, roles
 
-Who = Literal["provider", "deployer"]
 # When a duty applies beyond the risk level and the role: decided by code from the
 # Annex III point, or left to the user as a condition shown next to the duty.
 When = Literal["always", "annex_iii", "fria", "public_body", "employer"]

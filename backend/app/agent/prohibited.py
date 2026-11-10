@@ -21,6 +21,7 @@ from typing import Literal
 from pydantic import BaseModel, Field, create_model
 
 from backend.app.agent.facts import Facts
+from backend.app.agent.prompts import LANGUAGES, check_prompt
 from backend.app.law import Context
 from backend.app.llm import StructuredLLM
 
@@ -38,7 +39,6 @@ PRACTICES = {
     "h": "real-time remote biometric identification in public spaces for law enforcement",
 }
 ARTICLE_5 = ["art5_p1", "art5_p1a", "art5_p1b"]
-LANGUAGES = {"en": "English", "it": "Italian"}
 
 Answer = Literal["yes", "no", "uncertain"]
 
@@ -117,15 +117,6 @@ class ProhibitedResult:
         return bool(self.banned)
 
 
-def build_prompt(description: str, facts: Facts, law: list[Context]) -> str:
-    articles = "\n\n".join(f"{c.header}\n{c.text}" for c in law)
-    return (
-        f"<description>\n{description.strip()}\n</description>\n\n"
-        f"Facts:\n{facts.model_dump_json(exclude_none=True)}\n\n"
-        f"Article text:\n{articles}"
-    )
-
-
 def social_scoring(finding: SocialScoringFinding) -> Answer:
     """Point (c) applies only with one of its consequences, (i) or (ii), or both."""
     consequences = {finding.unrelated_context, finding.disproportionate}
@@ -166,5 +157,5 @@ def check_prohibited(
 ) -> ProhibitedResult:
     law = fetch([f"{lang}_{unit}" for unit in ARTICLE_5])
     system = SYSTEM.format(language=LANGUAGES[lang])
-    check = llm.ask(system, build_prompt(description, facts, law), ProhibitedCheck)
+    check = llm.ask(system, check_prompt(description, facts, law), ProhibitedCheck)
     return decide(check, lang)

@@ -27,7 +27,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from backend.app.agent.facts import Facts
-from backend.app.agent.prohibited import LANGUAGES, Answer, Citation
+from backend.app.agent.prohibited import Answer, Citation
+from backend.app.agent.prompts import LANGUAGES, check_prompt
 from backend.app.law import Context
 from backend.app.llm import StructuredLLM
 
@@ -132,15 +133,6 @@ def point_id(point: str | None, lang: str) -> str:
     return f"{lang}_annex3_{number}" + (f"_{letter}" if letter else "")
 
 
-def build_prompt(description: str, facts: Facts, law: list[Context]) -> str:
-    text = "\n\n".join(f"{c.header}\n{c.text}" for c in law)
-    return (
-        f"<description>\n{description.strip()}\n</description>\n\n"
-        f"Facts:\n{facts.model_dump_json(exclude_none=True)}\n\n"
-        f"Text:\n{text}"
-    )
-
-
 def decide(check: HighRiskCheck, facts: Facts, lang: str) -> HighRiskResult:
     result = HighRiskResult(check)
 
@@ -200,5 +192,5 @@ def check_high_risk(
     units = ARTICLE_6 + ANNEX_III + (ANNEX_I if facts.domain == "product_safety" else [])
     law = fetch([f"{lang}_{unit}" for unit in units])
     system = SYSTEM.format(language=LANGUAGES[lang])
-    check = llm.ask(system, build_prompt(description, facts, law), HighRiskCheck)
+    check = llm.ask(system, check_prompt(description, facts, law, "Text"), HighRiskCheck)
     return decide(check, facts, lang)

@@ -66,6 +66,8 @@ from backend.app.law import Context
 from backend.app.llm import StructuredLLM
 
 # The classes the state holds. A checkpoint may rebuild only these, not any type it names.
+# Stored assessments name them by module and class: moving or renaming one makes every
+# saved assessment unreadable, so that takes a data migration.
 STATE_TYPES = [
     (cls.__module__, cls.__name__)
     for cls in (
@@ -136,6 +138,13 @@ class Assessment(TypedDict, total=False):
     obligations: ObligationsResult
     citations: list[Citation]  # from the latest results, verified
     report: dict
+
+
+def asked(names: list[str], texts: list[str], prefix: str = "") -> list[Question]:
+    """Follow-up questions from a step's result, with ids unique across the steps."""
+    return [
+        Question(id=f"{prefix}{name}", text=text) for name, text in zip(names, texts, strict=True)
+    ]
 
 
 def needs_answers(state: Assessment) -> bool:
@@ -250,35 +259,28 @@ def build_graph(
 
     def check_prohibited_node(state: Assessment) -> dict:
         result = check_prohibited(llm, fetch, described(state), state["facts"], state["lang"])
-        questions = [
-            Question(id=f"art5_{label}", text=text)
-            for label, text in zip(result.uncertain, result.questions, strict=True)
-        ]
-        return {"prohibited": result, "questions": questions}
+        return {
+            "prohibited": result,
+            "questions": asked(result.uncertain, result.questions, "art5_"),
+        }
 
     def check_high_risk_node(state: Assessment) -> dict:
         result = check_high_risk(llm, fetch, described(state), state["facts"], state["lang"])
-        questions = [
-            Question(id=f"art6_{name}", text=text)
-            for name, text in zip(result.uncertain, result.questions, strict=True)
-        ]
-        return {"high_risk": result, "questions": questions}
+        return {
+            "high_risk": result,
+            "questions": asked(result.uncertain, result.questions, "art6_"),
+        }
 
     def check_transparency_node(state: Assessment) -> dict:
         result = check_transparency(llm, fetch, described(state), state["facts"], state["lang"])
-        questions = [
-            Question(id=f"art50_{name}", text=text)
-            for name, text in zip(result.uncertain, result.questions, strict=True)
-        ]
-        return {"transparency": result, "questions": questions}
+        return {
+            "transparency": result,
+            "questions": asked(result.uncertain, result.questions, "art50_"),
+        }
 
     def determine_role(state: Assessment) -> dict:
         result = decide_role(state["facts"], state["high_risk"].is_high_risk, state["lang"])
-        questions = [
-            Question(id=name, text=text)
-            for name, text in zip(result.uncertain, result.questions, strict=True)
-        ]
-        return {"role": result, "questions": questions}
+        return {"role": result, "questions": asked(result.uncertain, result.questions)}
 
     def list_obligations(state: Assessment) -> dict:
         duties = state["transparency"].duties

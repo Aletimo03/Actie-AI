@@ -15,7 +15,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from backend.app.agent.facts import Facts
-from backend.app.agent.prohibited import LANGUAGES, Citation, Finding
+from backend.app.agent.prohibited import Citation, Finding
+from backend.app.agent.prompts import LANGUAGES, check_prompt
 from backend.app.law import Context
 from backend.app.llm import StructuredLLM
 
@@ -142,15 +143,6 @@ def roles(role: str | None) -> set[str]:
     return {"provider", "deployer"}
 
 
-def build_prompt(description: str, facts: Facts, law: list[Context]) -> str:
-    text = "\n\n".join(f"{c.header}\n{c.text}" for c in law)
-    return (
-        f"<description>\n{description.strip()}\n</description>\n\n"
-        f"Facts:\n{facts.model_dump_json(exclude_none=True)}\n\n"
-        f"Article text:\n{text}"
-    )
-
-
 def decide(check: TransparencyCheck, facts: Facts, lang: str) -> TransparencyResult:
     result = TransparencyResult(check)
     mine = roles(facts.role)
@@ -178,5 +170,5 @@ def check_transparency(
 ) -> TransparencyResult:
     law = fetch([f"{lang}_{unit}" for unit in ARTICLE_50])
     system = SYSTEM.format(language=LANGUAGES[lang])
-    check = llm.ask(system, build_prompt(description, facts, law), TransparencyCheck)
+    check = llm.ask(system, check_prompt(description, facts, law), TransparencyCheck)
     return decide(check, facts, lang)
