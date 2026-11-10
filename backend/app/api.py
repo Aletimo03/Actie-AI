@@ -22,7 +22,7 @@ other request for the 20-40 s of a report.
 
 import json
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import date
 from typing import Annotated, Literal
@@ -49,6 +49,7 @@ UNAVAILABLE = (
     SchemaError,
     litellm.RateLimitError,
     litellm.APIConnectionError,
+    litellm.BadGatewayError,
     litellm.ServiceUnavailableError,
     litellm.InternalServerError,
     litellm.Timeout,
@@ -167,12 +168,16 @@ def open_pools(url: str) -> tuple[ConnectionPool, ConnectionPool]:
     an upgrade, a failover) the pooled connections are dead, and without the check the first
     requests would fail on them.
     """
-    check = ConnectionPool.check_connection
+    settings = {
+        "min_size": 1,
+        "max_size": 10,
+        "open": True,
+        "check": ConnectionPool.check_connection,
+    }
     checkpoints = ConnectionPool(
-        url, min_size=1, max_size=10, check=check,
-        kwargs={"autocommit": True, "row_factory": dict_row},
-    )  # fmt: skip
-    law = ConnectionPool(url, min_size=1, max_size=10, check=check)
+        url, kwargs={"autocommit": True, "row_factory": dict_row}, **settings
+    )
+    law = ConnectionPool(url, **settings)
     return checkpoints, law
 
 
@@ -216,19 +221,29 @@ def get_pool(request: Request) -> ConnectionPool:
 Graph = Annotated[object, Depends(get_graph)]
 
 
-def check_quota(request: Request, pool: Annotated[ConnectionPool, Depends(get_pool)]) -> None:
-    """Count a new assessment against the cost limits, or refuse it with 429."""
-    client = quota.client_key(request.client.host if request.client else "unknown")
-    try:
-        with pool.connection() as conn:
-            quota.take(conn, client, quota.Limits(), quota.now())
-    except quota.QuotaExceeded as error:
-        raise HTTPException(
-            429, str(error), headers={"Retry-After": str(error.retry_after)}
-        ) from error
+def quota_gate(
+    request: Request, pool: Annotated[ConnectionPool, Depends(get_pool)]
+) -> Callable[[], None]:
+    """The call that counts a new assessment against the cost limits, or refuses it with 429.
+
+    Handed to the endpoint instead of run here: FastAPI runs dependencies before it
+    validates the body, so a request refused with 422 would still use up the client's quota.
+    """
+
+    def take() -> None:
+        client = quota.client_key(request.client.host if request.client else "unknown")
+        try:
+            with pool.connection() as conn:
+                quota.take(conn, client, quota.Limits(), quota.now())
+        except quota.QuotaExceeded as error:
+            raise HTTPException(
+                429, str(error), headers={"Retry-After": str(error.retry_after)}
+            ) from error
+
+    return take
 
 
-Quota = Annotated[None, Depends(check_quota)]
+Quota = Annotated[Callable[[], None], Depends(quota_gate)]
 
 
 def config(id: str) -> dict:
@@ -304,7 +319,8 @@ def resume_value(graph, id: str, request: AnswersRequest) -> Command:
 
 
 @app.post("/assessments", status_code=201)
-def start(request: AssessRequest, graph: Graph, _: Quota) -> AssessmentOut:
+def start(request: AssessRequest, graph: Graph, take_quota: Quota) -> AssessmentOut:
+    take_quota()
     id = str(uuid4())  # unguessable: the id is the key to the description and answers
     return run(graph, {"description": request.description, "lang": request.lang}, id)
 
@@ -321,7 +337,8 @@ def resume(id: str, graph: Graph) -> AssessmentOut:
 
 
 @app.post("/assessments/stream")
-def start_streaming(request: AssessRequest, graph: Graph, _: Quota) -> StreamingResponse:
+def start_streaming(request: AssessRequest, graph: Graph, take_quota: Quota) -> StreamingResponse:
+    take_quota()
     value = {"description": request.description, "lang": request.lang}
     return stream(graph, value, str(uuid4()), request.lang)
 

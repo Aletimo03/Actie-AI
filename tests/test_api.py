@@ -5,6 +5,7 @@ import sys
 import uuid
 from contextlib import contextmanager
 
+import litellm
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -12,7 +13,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from test_graph import BANNED, CLEAR, HIGH, KNOWN, NONE, TODAY, UNKNOWN, ScriptedLLM, fetch, lookup
 
 from backend.app.agent.graph import SERDE, build_graph
-from backend.app.api import app, check_quota, get_graph, get_pool, open_pools
+from backend.app.api import app, get_graph, get_pool, open_pools, quota_gate
 from backend.app.llm import SchemaError
 
 DESCRIPTION = "We built a tool that ranks job applicants' CVs for recruiters."
@@ -35,7 +36,7 @@ def graph_over(llm, checkpointer=None):
 
 @pytest.fixture
 def client():
-    app.dependency_overrides[check_quota] = lambda: None  # limits: tests/test_quota.py
+    app.dependency_overrides[quota_gate] = lambda: lambda: None  # limits: tests/test_quota.py
     yield TestClient(app)  # no `with`: the lifespan (real pools, real LLM) never runs
     app.dependency_overrides.clear()
 
@@ -98,6 +99,16 @@ def test_the_schema_types_the_report_for_the_frontend():
     ]  # fmt: skip
     applies_from = schemas["ObligationOut"]["properties"]["applies_from"]
     assert applies_from == {"type": "string", "format": "date", "title": "Applies From"}
+
+
+def test_a_refused_request_uses_no_quota_and_a_valid_one_does(client):
+    taken = []
+    app.dependency_overrides[quota_gate] = lambda: lambda: taken.append(1)
+    serve(graph_over(scripted()))
+    assert client.post("/assessments", json={"description": "Too short."}).status_code == 422
+    assert taken == []
+    assert client.post("/assessments", json={"description": DESCRIPTION}).status_code == 201
+    assert taken == [1]
 
 
 @pytest.mark.parametrize(
@@ -232,7 +243,7 @@ def test_over_the_limit_is_429_before_the_graph_runs(client):
     def exceeded():
         raise HTTPException(429, "limit reached", headers={"Retry-After": "120"})
 
-    app.dependency_overrides[check_quota] = exceeded
+    app.dependency_overrides[quota_gate] = lambda: exceeded
     for path in ("/assessments", "/assessments/stream"):
         refused = client.post(path, json={"description": DESCRIPTION})
         assert refused.status_code == 429 and refused.headers["retry-after"] == "120"
@@ -246,6 +257,16 @@ def test_the_api_runs_without_the_ingest_group():
     # A fresh interpreter: this test process may have loaded them for other tests.
     out = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     assert out.stdout.strip() == "[]"
+
+
+def test_a_bad_gateway_from_the_provider_is_503_not_a_server_error(client):
+    class Failing:
+        def ask(self, system, user, schema):
+            raise litellm.BadGatewayError("502", model="m", llm_provider="anthropic")
+
+    serve(graph_over(Failing()))
+    response = client.post("/assessments", json={"description": DESCRIPTION})
+    assert response.status_code == 503 and response.headers["retry-after"] == "60"
 
 
 def test_liveness_never_touches_the_database(client):
