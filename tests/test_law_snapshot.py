@@ -37,6 +37,13 @@ def test_loading_again_leaves_the_law_as_it_is(db):
     assert model == ("real",)  # e.g. real embeddings from ingestion are kept
 
 
+def test_a_new_version_of_the_law_takes_over_from_the_current_one(db):
+    db.execute("INSERT INTO versions (version, is_current) VALUES ('older', true)")
+    load(db)
+    current = db.execute("SELECT version FROM versions WHERE is_current").fetchall()
+    assert current == [(snapshot_version(),)]
+
+
 def test_export_then_load_gives_the_same_rows(db, tmp_path):
     load(db)
     copy = tmp_path / "again.jsonl.gz"

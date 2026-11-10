@@ -75,6 +75,8 @@ def load(conn: psycopg.Connection, path: Path = SNAPSHOT) -> dict[str, int]:
         # run or from real ingestion with real embeddings, is left as it is.
         if conn.execute("SELECT 1 FROM versions WHERE version = %s", (version,)).fetchone():
             return dict.fromkeys(COLUMNS, 0)
+        # A newer law replaces the current one: the index allows one current version.
+        conn.execute("UPDATE versions SET is_current = false WHERE is_current")
         for table, columns in COLUMNS.items():
             names, values = extra[table]
             sql = f"COPY {table} ({', '.join(columns + names)}) FROM STDIN"
