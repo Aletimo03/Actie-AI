@@ -48,5 +48,7 @@ echo "$RELEASE" >release
 install -m 644 actie-retention.service actie-retention.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now actie-retention.timer
-docker image prune -f >/dev/null
+# Every image no container uses, tagged ones too: each release leaves a ~190 MB image behind
+# on a 20 GB disk. A rollback pulls its images again.
+docker image prune -af >/dev/null
 echo "release $RELEASE is up at https://$(cat site)"

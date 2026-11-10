@@ -38,6 +38,7 @@ services:
         condition: service_healthy
     # No ports: only nginx reaches it, which is also why it may trust X-Forwarded-For.
     restart: unless-stopped
+    stop_grace_period: 60s  # longer than uvicorn's 50 s for running streams
 
   web:
     build: frontend

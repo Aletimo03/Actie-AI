@@ -10,7 +10,8 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY . .
-RUN npm run build
+# Readable by nginx's unprivileged user, whatever the permissions on the machine that builds.
+RUN npm run build && chmod -R a+rX dist
 
 FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e0794a712d10e3e45a563e118e9a77c817e6f86
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf

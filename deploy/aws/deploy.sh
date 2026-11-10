@@ -13,6 +13,17 @@ id=$(aws ssm send-command --region "$REGION" --instance-ids "$INSTANCE" \
   --parameters "commands=[\"/opt/actie/up.sh $RELEASE\"]" \
   --query Command.CommandId --output text)
 echo "release $RELEASE sent ($id), waiting..."
-aws ssm wait command-executed --region "$REGION" --command-id "$id" --instance-id "$INSTANCE" || true
+
+# Our own loop: the AWS CLI's waiter gives up after 100 s, and a release that pulls new
+# images can take longer. The invocation may not exist yet right after the send.
+status=Pending
+while [[ $status =~ ^(Pending|InProgress|Delayed)$ ]]; do
+  sleep 5
+  status=$(aws ssm get-command-invocation --region "$REGION" --command-id "$id" \
+    --instance-id "$INSTANCE" --query Status --output text 2>/dev/null || echo Pending)
+done
+
 aws ssm get-command-invocation --region "$REGION" --command-id "$id" --instance-id "$INSTANCE" \
-  --query '[Status, StandardOutputContent, StandardErrorContent]' --output text | tail -20
+  --query '[StandardOutputContent, StandardErrorContent]' --output text | tail -20
+echo "release $RELEASE: $status"
+[ "$status" = Success ]  # a failed release fails this script
