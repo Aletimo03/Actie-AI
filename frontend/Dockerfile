@@ -3,7 +3,7 @@
 #   docker build -t actie-web frontend
 # Base images pinned by digest, at least two weeks old: node 26.11.1, nginx 1.30.5 (stable).
 
-FROM node:26.11.1-bookworm-slim@sha256:86f07bc9c5dce4578cf37e5a418b7bfc7f817cda25cde66e2b66e95ed86c4567 AS build
+FROM node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe AS build
 WORKDIR /app
 # Dependencies first (lockfile, cooldown and no install scripts from .npmrc): cached
 # until package-lock.json changes.
@@ -13,7 +13,7 @@ COPY . .
 # Readable by nginx's unprivileged user, whatever the permissions on the machine that builds.
 RUN npm run build && chmod -R a+rX dist
 
-FROM nginxinc/nginx-unprivileged:1.30.5-alpine@sha256:56b8272e43a0525f67aed68d1e0794a712d10e3e45a563e118e9a77c817e6f86
+FROM nginxinc/nginx-unprivileged:1.30.6-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 COPY nginx/security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build /app/dist /usr/share/nginx/html
