@@ -56,7 +56,7 @@ updates:
     commit-message: { prefix: "build(deps)" }
 
   - package-ecosystem: docker-compose
-    directory: /
+    directories: [/, /deploy/aws/server]
     schedule: { interval: weekly, day: monday }
     cooldown: { default-days: 14 }
     ignore:
