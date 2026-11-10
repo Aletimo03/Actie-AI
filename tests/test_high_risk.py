@@ -8,7 +8,7 @@ from backend.app.agent.high_risk import (
     decide,
     point_id,
 )
-from backend.app.retrieval.contexts import Context
+from backend.app.law import Context
 
 NO = {"applies": "no", "reason": "No."}
 MATCH = {"applies": "yes", "point": "4(a)", "reason": "Ranks CVs.", "quote": "recruitment"}

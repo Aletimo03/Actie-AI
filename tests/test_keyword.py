@@ -1,7 +1,7 @@
 from conftest import MODEL, make_rows
 
-from backend.app.retrieval.keyword import keyword_search
-from backend.app.retrieval.scope import Scope
+from evals.search.keyword import keyword_search
+from evals.search.scope import Scope
 from ingestion.load import load
 
 TEXTS = {

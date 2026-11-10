@@ -1,5 +1,5 @@
-from backend.app.retrieval.rerank import Reranker
-from backend.app.retrieval.vector import Hit
+from evals.search.rerank import Reranker
+from evals.search.vector import Hit
 
 
 class FakeReranker(Reranker):

@@ -34,8 +34,8 @@ from langgraph.types import Command
 
 from backend.app.agent.citations import fetch_chunks
 from backend.app.agent.graph import SERDE, build_graph
+from backend.app.law import fetch_contexts
 from backend.app.llm import LLM
-from backend.app.retrieval.contexts import fetch_contexts
 
 SYSTEMS = Path(__file__).with_name("systems.toml")
 RISKS = ["minimal", "limited", "high", "prohibited"]  # increasing obligations

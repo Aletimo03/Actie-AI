@@ -7,7 +7,7 @@ from backend.app.agent.transparency import (
     decide,
     roles,
 )
-from backend.app.retrieval.contexts import Context
+from backend.app.law import Context
 
 NO = {"applies": "no", "reason": "No."}
 

@@ -16,8 +16,8 @@ from pydantic import BaseModel, Field
 
 from backend.app.agent.facts import Facts
 from backend.app.agent.prohibited import LANGUAGES, Citation, Finding
+from backend.app.law import Context
 from backend.app.llm import StructuredLLM
-from backend.app.retrieval.contexts import Context
 
 ARTICLE_50 = ["art50_p1", "art50_p2", "art50_p3", "art50_p4", "art50_p5"]
 

@@ -41,8 +41,8 @@ from backend.app import quota
 from backend.app.agent.citations import fetch_chunks
 from backend.app.agent.graph import SERDE, build_graph
 from backend.app.agent.prohibited import Citation
+from backend.app.law import fetch_contexts
 from backend.app.llm import LLM, SchemaError
-from backend.app.retrieval.contexts import fetch_contexts
 
 # Failures of the model provider, not of the request: the user can try again later.
 UNAVAILABLE = (

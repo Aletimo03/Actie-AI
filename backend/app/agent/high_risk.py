@@ -28,8 +28,8 @@ from pydantic import BaseModel, Field
 
 from backend.app.agent.facts import Facts
 from backend.app.agent.prohibited import LANGUAGES, Answer, Citation
+from backend.app.law import Context
 from backend.app.llm import StructuredLLM
-from backend.app.retrieval.contexts import Context
 
 ARTICLE_6 = ["art6_p1", "art6_p1a", "art6_p1b", "art6_p1c", "art6_p2", "art6_p3", "art6_p4"]
 ANNEX_III = [f"annex3_{n}" for n in range(1, 9)]

@@ -20,7 +20,7 @@ from backend.app.agent.high_risk import ExceptionFinding, HighRiskCheck
 from backend.app.agent.obligations import SOURCES
 from backend.app.agent.prohibited import PRACTICES, ProhibitedCheck, decide
 from backend.app.agent.transparency import RULES, TransparencyCheck
-from backend.app.retrieval.contexts import Context
+from backend.app.law import Context
 
 TODAY = date(2026, 10, 30)
 KNOWN = Facts(

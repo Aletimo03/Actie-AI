@@ -62,8 +62,8 @@ from backend.app.agent.transparency import (
     TransparencyResult,
     check_transparency,
 )
+from backend.app.law import Context
 from backend.app.llm import StructuredLLM
-from backend.app.retrieval.contexts import Context
 
 # The classes the state holds. A checkpoint may rebuild only these, not any type it names.
 STATE_TYPES = [

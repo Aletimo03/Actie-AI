@@ -23,10 +23,11 @@ from pathlib import Path
 
 import psycopg
 
+from backend.app.law import CURRENT_VERSION
+
 DB = Path(__file__).parents[2] / "db"
 SNAPSHOT = DB / "law_snapshot.jsonl.gz"
 SCHEMA = DB / "schema.sql"
-CURRENT = "(SELECT version FROM versions WHERE is_current)"
 COLUMNS = {
     "versions": ["version"],
     "contexts": ["id", "version", "lang", "header", "text", "source"],
@@ -42,7 +43,7 @@ DIMENSIONS = 1024  # chunks.embedding is vector(1024)
 def export(conn: psycopg.Connection, path: Path = SNAPSHOT) -> dict[str, int]:
     counts, lines = {}, []
     for table, columns in COLUMNS.items():
-        where = "is_current" if table == "versions" else f"version = {CURRENT}"
+        where = "is_current" if table == "versions" else f"version = {CURRENT_VERSION}"
         rows = conn.execute(
             f"SELECT {', '.join(columns)} FROM {table} WHERE {where} ORDER BY 1"
         ).fetchall()

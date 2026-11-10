@@ -1,14 +1,15 @@
-"""Fetch context units (what the LLM reads) by id, from the current version.
+"""The law as the agent reads it: provisions fetched by id from the current version.
 
-Search finds chunks; a step that already knows which provisions it needs
-(Article 5(1) is short and every point must be checked) loads them directly.
+Each legal step knows exactly which provisions it must judge (all of Article 5(1), all of
+Annex III), so it loads them directly: a top-k search could only lose one. The search code
+built for the law (evals/search/) is measured by the retrieval eval and not used here.
 """
 
 from dataclasses import dataclass
 
 import psycopg
 
-from backend.app.retrieval.scope import CURRENT_VERSION
+CURRENT_VERSION = "(SELECT version FROM versions WHERE is_current)"  # a SQL subquery
 
 
 @dataclass

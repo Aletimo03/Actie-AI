@@ -36,8 +36,7 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP"]
 
 [dependency-groups]
-# What only the offline pipeline and the retrieval evals import (ingestion/, backend/app/
-# retrieval/): parsing EUR-Lex, pgvector, and the reranker with torch (~700 MB). The API
+# What only the offline pipeline and the retrieval evals import (ingestion/, evals/search/): parsing EUR-Lex, pgvector, and the reranker with torch (~700 MB). The API
 # never imports them, so its image installs without this group (--no-group ingest).
 ingest = [
     "beautifulsoup4>=4.15.0",

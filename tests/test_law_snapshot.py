@@ -5,8 +5,8 @@ import os
 import pytest
 
 from backend.app.agent.citations import fetch_chunks
+from backend.app.law import fetch_contexts
 from backend.app.law_snapshot import SNAPSHOT, export, load
-from backend.app.retrieval.contexts import fetch_contexts
 
 
 def snapshot_version() -> str:

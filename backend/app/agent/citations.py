@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import psycopg
 
 from backend.app.agent.prohibited import Citation
-from backend.app.retrieval.scope import CURRENT_VERSION
+from backend.app.law import CURRENT_VERSION
 
 ELLIPSIS = re.compile(r"\.\.\.|…|\[\.\.\.\]")
 QUOTES = str.maketrans(

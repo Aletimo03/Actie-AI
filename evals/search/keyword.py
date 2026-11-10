@@ -15,8 +15,8 @@ and avglen are computed over the chunks in scope.
 
 import psycopg
 
-from backend.app.retrieval.scope import Scope
-from backend.app.retrieval.vector import Hit
+from evals.search.scope import Scope
+from evals.search.vector import Hit
 
 CONFIG = {"en": "english", "it": "italian"}
 K1 = 1.2  # how quickly repeated occurrences stop adding score (the usual default)

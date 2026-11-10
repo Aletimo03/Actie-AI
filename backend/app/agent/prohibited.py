@@ -21,8 +21,8 @@ from typing import Literal
 from pydantic import BaseModel, Field, create_model
 
 from backend.app.agent.facts import Facts
+from backend.app.law import Context
 from backend.app.llm import StructuredLLM
-from backend.app.retrieval.contexts import Context
 
 # Article 5(1), first subparagraph: label -> short name (shown to the model in the schema).
 PRACTICES = {

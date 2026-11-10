@@ -10,7 +10,7 @@ from backend.app.agent.prohibited import (
     check_prohibited,
     decide,
 )
-from backend.app.retrieval.contexts import Context, fetch_contexts
+from backend.app.law import Context, fetch_contexts
 from ingestion.load import load
 
 NO = {"applies": "no", "reason": "Does not match."}

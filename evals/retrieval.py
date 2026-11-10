@@ -21,11 +21,11 @@ import httpx
 import psycopg
 from pgvector.psycopg import register_vector
 
-from backend.app.retrieval.hybrid import hybrid_search, search
-from backend.app.retrieval.keyword import keyword_search
-from backend.app.retrieval.rerank import Reranker
-from backend.app.retrieval.scope import Scope
-from backend.app.retrieval.vector import vector_search
+from evals.search.hybrid import hybrid_search, search
+from evals.search.keyword import keyword_search
+from evals.search.rerank import Reranker
+from evals.search.scope import Scope
+from evals.search.vector import vector_search
 from ingestion.embed import OllamaEmbedder
 
 CASES = Path(__file__).with_name("retrieval_cases.toml")

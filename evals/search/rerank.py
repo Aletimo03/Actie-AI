@@ -13,7 +13,7 @@ import os
 from dataclasses import replace
 from functools import cached_property
 
-from backend.app.retrieval.vector import Hit
+from evals.search.vector import Hit
 
 RERANK_MODEL = os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3")
 MAX_TOKENS = 512  # longest (question + chunk) the model reads; our chunks average ~120 tokens

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import psycopg
 from pgvector import Vector
 
-from backend.app.retrieval.scope import Scope
+from evals.search.scope import Scope
 from ingestion.embed import OllamaEmbedder
 
 

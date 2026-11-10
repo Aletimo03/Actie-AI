@@ -1,13 +1,11 @@
 """Which chunks a search may return: the current version, one language, and optionally
 a part of the Act (e.g. only Article 5, or Article 6 and Annex III) or only binding text.
 
-The agent will scope each step: check_prohibited searches Article 5 only, which keeps
-explanatory recitals and unrelated articles out of its results.
 """
 
 from dataclasses import dataclass, field
 
-CURRENT_VERSION = "(SELECT version FROM versions WHERE is_current)"
+from backend.app.law import CURRENT_VERSION
 
 
 @dataclass

@@ -4,15 +4,15 @@
 
 RRF uses ranks only, so the cosine similarities and BM25 scores, which are on
 unrelated scales, never need to be compared. A chunk ranked well by both
-searches beats one ranked first by only one of them (Lecture 04).
+searches beats one ranked first by only one of them.
 """
 
 import psycopg
 
-from backend.app.retrieval.keyword import keyword_search
-from backend.app.retrieval.rerank import Reranker
-from backend.app.retrieval.scope import Scope
-from backend.app.retrieval.vector import Hit, vector_search
+from evals.search.keyword import keyword_search
+from evals.search.rerank import Reranker
+from evals.search.scope import Scope
+from evals.search.vector import Hit, vector_search
 from ingestion.embed import OllamaEmbedder
 
 K = 60  # the constant from the original RRF paper; larger values flatten the rank differences
