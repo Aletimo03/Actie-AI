@@ -16,7 +16,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
     uv sync --locked --no-dev --no-group ingest --no-install-project
 COPY backend ./backend
-# The schema and the law snapshot, for the Job that fills an empty database (Lecture 12).
+# The schema and the law snapshot, for the Job that fills an empty database.
 COPY db/schema.sql db/law_snapshot.jsonl.gz ./db/
 
 FROM python:3.12.14-slim-bookworm@sha256:392307d22300de8b5986851a12d9176dfc0fc073e65bf6523ebd7dcbeb23564e

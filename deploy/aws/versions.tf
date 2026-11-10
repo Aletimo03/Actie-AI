@@ -8,7 +8,7 @@ terraform {
     }
   }
   # State stays local and gitignored: it holds resource IDs, no secrets (the model key is
-  # in SSM, the other secrets are generated on the server). Lecture 13 explains remote state.
+  # in SSM, the other secrets are generated on the server).
 }
 
 provider "aws" {

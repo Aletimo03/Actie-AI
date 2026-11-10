@@ -1,4 +1,4 @@
-"""The assessment as a LangGraph state machine (Lecture 06).
+"""The assessment as a LangGraph state machine.
 
     START -> extract_facts --(facts missing)--> ask_user -> extract_facts
                   |

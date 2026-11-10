@@ -1,6 +1,6 @@
 """The law the agent reads, as a small file: to fill an empty database without ingestion.
 
-Used by the agent eval in CI and by the Kubernetes Job that loads the law (Lecture 12).
+Used by the agent eval in CI and by the jobs that load the law on the server and on Kubernetes.
 
 The agent never searches by vector: it reads contexts and chunks by id. So the snapshot
 holds the current version's rows without their embeddings (0.9 MB instead of ~40 MB, and

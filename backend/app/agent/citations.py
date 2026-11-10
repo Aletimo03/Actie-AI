@@ -1,4 +1,4 @@
-"""Last step before the report: check every citation against the law text (Lecture 07).
+"""Last step before the report: check every citation against the law text.
 
 Code builds each citation's chunk id from the model's label ("4(a)" ->
 "en_annex3_4_a"), and the model writes the quote. Both can be wrong: a point

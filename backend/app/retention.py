@@ -4,7 +4,7 @@ A checkpoint holds the description and every answer, which may be confidential p
 plans: they are kept only as long as a user may come back to their link. An assessment's
 age is that of its newest checkpoint, so one being answered today is never deleted. The
 deletion goes through LangGraph's own delete_thread (checkpoints, blobs and writes).
-Run daily (a Kubernetes CronJob in Lecture 12):
+Run daily (a systemd timer on the server, a CronJob on Kubernetes):
 
     uv run --env-file .env python -m backend.app.retention [--days 30] [--dry-run]
 """

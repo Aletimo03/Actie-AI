@@ -18,10 +18,10 @@ RATE_LIMIT_BUDGET (a daily cap) moves to the next model in LLM_FALLBACKS
 for the rest of the run. LiteLLM's own fallbacks are not used: they move on
 any error, so every per-minute limit would spend a fallback's small budget.
 
-The model is a LiteLLM string read from the environment, so moving from the
-local Ollama to Groq is a .env change, not a code change:
-    LLM_MODEL=ollama_chat/gemma4:12b     (development, local)
-    LLM_MODEL=groq/<model>               (live site, see docs on the provider choice)
+The model is a LiteLLM string read from the environment, so changing provider
+is a .env change, not a code change:
+    LLM_MODEL=anthropic/claude-haiku-5-5   (the live site)
+    LLM_MODEL=ollama_chat/gemma4:12b       (offline, on a laptop)
 """
 
 import hashlib

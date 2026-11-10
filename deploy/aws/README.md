@@ -3,7 +3,7 @@
 Terraform creates one `t3.small` in `eu-north-1` running the stack in `server/compose.yaml`
 (Postgres, the API, nginx) behind Caddy, which gets a Let's Encrypt certificate for
 `<ip-with-dashes>.sslip.io` (or your `domain`). No SSH (Session Manager), no load balancer,
-no NAT gateway: about $15 a month from the Free plan's credits. Lecture 13 has the why.
+no NAT gateway: about $15 a month from the Free plan's credits.
 
 A release is one commit: the server runs the images CI published as `sha-<commit>` and
 fetches that commit's `server/` files, so config and code always match.

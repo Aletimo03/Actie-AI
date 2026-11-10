@@ -15,9 +15,10 @@ checked against the official text. English and Italian.
 1. **The law, prepared once.** The consolidated text from EUR-Lex (English and Italian)
    is split into one chunk per article paragraph, point and annex entry, embedded, and
    stored in Postgres with pgvector.
-2. **Retrieval.** Vector and keyword search, merged with reciprocal rank fusion and
-   re-ranked by a cross-encoder: the right provision is in the top 5 for 92% of the
-   test questions.
+2. **The search, measured.** Vector and keyword search, merged with reciprocal rank fusion
+   and re-ranked by a cross-encoder, find the right provision in the top 5 for 92% of the
+   test questions. The live agent does not need it: each step knows which provisions it
+   must judge and loads them by id, so none can be missed.
 3. **The assessment.** A LangGraph agent follows the Act's own order: extract the facts,
    ask the user what the description leaves open, check the prohibited practices
    (Art. 5), high-risk classification (Art. 6, Annexes I and III), transparency (Art. 50),
@@ -129,7 +130,7 @@ M-series Mac the first time and about a second on re-runs.
 
 ## Retrieval
 
-`backend.app.retrieval.hybrid.search()` runs vector search (bge-m3, pgvector)
+`evals.search.hybrid.search()` runs vector search (bge-m3, pgvector)
 and BM25 keyword search (Postgres full text), fuses them with reciprocal rank
 fusion, and re-ranks the top 30 with the `BAAI/bge-reranker-v2-m3`
 cross-encoder. Scores on the 26-question test set in
@@ -172,7 +173,8 @@ loading a new version of the law, and a test fails until you do.
 
 ```
 ingestion/              offline pipeline: fetch, parse, chunk, validate, embed, load
-backend/app/retrieval/  vector, keyword and hybrid search, re-ranking
+backend/app/law.py      the provisions the agent reads, by id
+evals/search/           vector, keyword and hybrid search, re-ranking (measured, not live)
 backend/app/agent/      the LangGraph assessment: checks, role, obligations, citations
 backend/app/api.py      HTTP API: start, answer, continue, stream progress (SSE)
 deploy/                 Helm chart (helm/actie), kind cluster (kind/), AWS (aws/)
